@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 // TODO replace this with lib import
-import "./MerkleTreeWithHistory.sol";
+import "../lib/tornado-core/contracts/MerkleTreeWithHistory.sol";
 
 contract Rollup is MerkleTreeWithHistory {
     constructor(uint32 levels, address hasher)
