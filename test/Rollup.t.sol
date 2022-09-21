@@ -16,14 +16,14 @@ contract RollupTest is Test {
 
     // Test that the rollup root is changing upon each deposit
     function testDeposit(uint32[RUNS] calldata values) public {
-        bytes32 root = rollup.root();
+        bytes32 root = rollup.roots(0);
         bytes32 prevRoot = root;
         assertEq(root, "");
 
         for (uint256 i; i < RUNS; i++) {
             rollup.deposit{value: values[i]}();
 
-            root = rollup.root();
+            root = rollup.roots(i);
             assertTrue(root != prevRoot);
             prevRoot = root;
         }
