@@ -26,7 +26,7 @@ contract Rollup {
         for (uint32 i = 0; i < levels; i++) {
             if (currentIndex % 2 == 0) {
                 left = currentLevelHash;
-                right = "";
+                right = ""; // this depends on the child
                 filledSubtrees[i] = currentLevelHash;
             } else {
                 left = filledSubtrees[i];
