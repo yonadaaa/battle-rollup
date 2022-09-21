@@ -4,3 +4,6 @@
 [submodule "lib/openzeppelin-contracts"]
 	path = lib/openzeppelin-contracts
 	url = https://github.com/OpenZeppelin/openzeppelin-contracts
+[submodule "lib/tornado-core"]
+	path = lib/tornado-core
+	url = https://github.com/tornado-repositories/tornado-core
