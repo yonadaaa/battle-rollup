@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity >=0.7.0;
 
-import "../lib/tornado-core/contracts/MerkleTreeWithHistory.sol";
+import "tornado-core/MerkleTreeWithHistory.sol";
 
 contract Rollup is MerkleTreeWithHistory {
     constructor(uint32 levels, address hasher)
