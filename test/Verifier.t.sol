@@ -20,12 +20,15 @@ contract PlonkVerifierTest is Test {
     function testVerify(uint32 a, uint32 b) public {
         vm.assume(a > 2);
 
-        // Create proof JSON input file
-        string[] memory inputs = new string[](3);
-        inputs[0] = "./input.sh";
-        inputs[1] = vm.toString(a);
-        inputs[2] = vm.toString(b);
-        vm.ffi(inputs);
+        string memory path = "input.json";
+        string memory line1 = string.concat(
+            '{"a":',
+            vm.toString(a),
+            ',"b":',
+            vm.toString(b),
+            "}"
+        );
+        vm.writeLine(path, line1);
 
         // Generate proof
         string[] memory genInputs = new string[](8);
@@ -38,6 +41,10 @@ contract PlonkVerifierTest is Test {
         genInputs[6] = "proof.json";
         genInputs[7] = "public.json";
         vm.ffi(genInputs);
+
+        string[] memory inputs = new string[](3);
+        inputs[1] = vm.toString(a);
+        inputs[2] = vm.toString(b);
 
         inputs[0] = "./prove.sh";
         bytes memory proof = vm.ffi(inputs);
