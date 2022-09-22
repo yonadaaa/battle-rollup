@@ -20,11 +20,25 @@ contract PlonkVerifierTest is Test {
     function testVerify(uint32 a, uint32 b) public {
         vm.assume(a > 2);
 
+        // Create proof JSON input file
         string[] memory inputs = new string[](3);
+        inputs[0] = "./input.sh";
         inputs[1] = vm.toString(a);
         inputs[2] = vm.toString(b);
+        vm.ffi(inputs);
 
-        // TODO combine proof and output into one script
+        // Generate proof
+        string[] memory genInputs = new string[](8);
+        genInputs[0] = "snarkjs";
+        genInputs[1] = "plonk";
+        genInputs[2] = "fullprove";
+        genInputs[3] = "input.json";
+        genInputs[4] = "circuits/Example_js/Example.wasm";
+        genInputs[5] = "circuits/Example.zkey";
+        genInputs[6] = "proof.json";
+        genInputs[7] = "public.json";
+        vm.ffi(genInputs);
+
         inputs[0] = "./prove.sh";
         bytes memory proof = vm.ffi(inputs);
 
@@ -37,5 +51,16 @@ contract PlonkVerifierTest is Test {
         pubSignals[2] = b;
 
         assertTrue(verifier.verifyProof(proof, pubSignals));
+
+        // Delete files
+        string[] memory rmInput = new string[](2);
+        rmInput[0] = "rm";
+
+        rmInput[1] = "input.json";
+        vm.ffi(rmInput);
+        rmInput[1] = "proof.json";
+        vm.ffi(rmInput);
+        rmInput[1] = "public.json";
+        vm.ffi(rmInput);
     }
 }
