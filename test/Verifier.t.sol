@@ -31,8 +31,6 @@ contract PlonkVerifierTest is Test {
         inputs[0] = "./output.sh";
         bytes memory output = vm.ffi(inputs);
 
-        assertEq(output << 32, "");
-
         uint256[] memory pubSignals = new uint256[](3);
         pubSignals[0] = bytesToUint(output);
         pubSignals[1] = a;
