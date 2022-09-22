@@ -16,15 +16,4 @@ contract Rollup is MerkleTreeWithHistory {
 
         _insert(_leaf);
     }
-
-    function transfer(address to, uint256 amount) external payable {
-        bytes32 _leaf = bytes32(
-            uint256(keccak256(abi.encodePacked(msg.sender, to, amount))) %
-                FIELD_SIZE
-        );
-
-        _insert(_leaf);
-    }
 }
-
-// ZK circuit takes the Action merkle root as input

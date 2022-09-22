@@ -16,24 +16,27 @@ contract PlonkVerifierTest is Test {
         assertTrue(!verifier.verifyProof("", pubSignals));
     }
 
-    // TODO: Generate proofs for fuzzed inputs
-    // Take x and y as input
-    // run the generate calldata
-    // splice calldata and fill in pubsignals and proof
-    function testVerify() public {
-        string[] memory inputs = new string[](3);
-        inputs[0] = "./prove.sh";
-        inputs[1] = "3";
-        inputs[2] = "11";
+    // Generate proof for fuzzed inputs with SnarkJS and verify with smart contract
+    function testVerify(uint32 a, uint32 b) public {
+        vm.assume(a > 2);
 
-        bytes memory res = vm.ffi(inputs);
+        string[] memory inputs = new string[](3);
+        inputs[1] = vm.toString(a);
+        inputs[2] = vm.toString(b);
+
+        // TODO combine proof and output into one script
+        inputs[0] = "./prove.sh";
+        bytes memory proof = vm.ffi(inputs);
+
+        inputs[0] = "./output.sh";
+        bytes memory output = vm.ffi(inputs);
+
+        assertEq(output << 32, "");
 
         uint256[] memory pubSignals = new uint256[](3);
-        pubSignals[0] = 33;
-        pubSignals[1] = 3;
-        pubSignals[2] = 11;
-
-        bytes memory proof = res;
+        pubSignals[0] = bytesToUint(output);
+        pubSignals[1] = a;
+        pubSignals[2] = b;
 
         assertTrue(verifier.verifyProof(proof, pubSignals));
     }

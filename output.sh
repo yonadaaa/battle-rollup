@@ -13,4 +13,4 @@ rm input.json
 rm proof.json
 rm public.json
 
-echo ${calldata:0:1602}
+echo ${calldata:1605:66} 
