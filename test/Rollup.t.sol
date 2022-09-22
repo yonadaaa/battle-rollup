@@ -36,6 +36,24 @@ contract RollupTest is Test {
             vm.deal(senders[i], type(uint32).max);
             vm.prank(senders[i]);
             rollup.deposit{value: values[i]}();
+
+            assertTrue(rollup.roots(i) != rollup.roots(i + 1));
+        }
+    }
+
+    function testTransfer(
+        address[RUNS] calldata senders,
+        address[RUNS] calldata receivers,
+        uint32[RUNS] calldata values
+    ) public {
+        bytes32 root = rollup.roots(0);
+        assertEq(root, rollup.zeros(LEVELS - 1));
+
+        for (uint256 i; i < RUNS; i++) {
+            vm.deal(senders[i], type(uint32).max);
+            vm.prank(senders[i]);
+            rollup.transfer(receivers[i], values[i]);
+
             assertTrue(rollup.roots(i) != rollup.roots(i + 1));
         }
     }
