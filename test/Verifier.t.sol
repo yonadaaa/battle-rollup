@@ -20,15 +20,16 @@ contract PlonkVerifierTest is Test {
     function testVerify(uint32 a, uint32 b) public {
         vm.assume(a > 2);
 
+        // Create input JSON file
         string memory path = "input.json";
-        string memory line1 = string.concat(
+        string memory line = string.concat(
             '{"a":',
             vm.toString(a),
             ',"b":',
             vm.toString(b),
             "}"
         );
-        vm.writeLine(path, line1);
+        vm.writeLine(path, line);
 
         // Generate proof
         string[] memory genInputs = new string[](8);
@@ -42,6 +43,7 @@ contract PlonkVerifierTest is Test {
         genInputs[7] = "public.json";
         vm.ffi(genInputs);
 
+        // Get calldata for proof and output
         string[] memory inputs = new string[](3);
         inputs[1] = vm.toString(a);
         inputs[2] = vm.toString(b);
@@ -51,13 +53,6 @@ contract PlonkVerifierTest is Test {
 
         inputs[0] = "./output.sh";
         bytes memory output = vm.ffi(inputs);
-
-        uint256[] memory pubSignals = new uint256[](3);
-        pubSignals[0] = bytesToUint(output);
-        pubSignals[1] = a;
-        pubSignals[2] = b;
-
-        assertTrue(verifier.verifyProof(proof, pubSignals));
 
         // Delete files
         string[] memory rmInput = new string[](2);
@@ -69,5 +64,12 @@ contract PlonkVerifierTest is Test {
         vm.ffi(rmInput);
         rmInput[1] = "public.json";
         vm.ffi(rmInput);
+
+        uint256[] memory pubSignals = new uint256[](3);
+        pubSignals[0] = bytesToUint(output);
+        pubSignals[1] = a;
+        pubSignals[2] = b;
+
+        assertTrue(verifier.verifyProof(proof, pubSignals));
     }
 }
