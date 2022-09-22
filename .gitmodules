@@ -10,3 +10,6 @@
 [submodule "lib/circomlib"]
 	path = lib/circomlib
 	url = https://github.com/iden3/circomlib
+[submodule "lib/stealthdrop"]
+	path = lib/stealthdrop
+	url = https://github.com/stealthdrop/stealthdrop
