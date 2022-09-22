@@ -4,72 +4,37 @@ pragma solidity ^0.8.13;
 import "forge-std/Test.sol";
 import "../src/PlonkVerifier.sol";
 
-contract PlonkVerifierTest is Test {
-    PlonkVerifier public verifier;
+uint256 constant FIELD_SIZE = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
 
-    function setUp() public {
-        verifier = new PlonkVerifier();
-    }
+contract PlonkVerifierTest is Test, PlonkVerifier {
+    function setUp() public {}
 
-    function testWrongVerify() public {
+    function testVerifyWrong() public {
         uint256[] memory pubSignals;
-        assertTrue(!verifier.verifyProof("", pubSignals));
+        assertTrue(!verifyProof("", pubSignals));
     }
 
-    // Generate proof for fuzzed inputs with SnarkJS and verify with smart contract
-    function testVerify(uint32 a, uint32 b) public {
-        vm.assume(a > 2);
+    function testVerifyExample1() public {
+        bytes
+            memory proof = hex"05c5c8c06dee0a4da3bf28a6fc5f1eb42eacc5492470c43930de28830f64172904dcba172e19aad0d77de70d93139dc682ed9b1cbf6d6e6d31afcadded75eeea2be562820db37318d77b65e30ef7649beced155cd8e47a903f59fb45beb471531550b32adb17ae341fad5af430201a19955a979fa8c7dd24bb3dd6cb12d912f525e5e5663b0acff62ca5479cad2b6d7a289e551f34c86a9d98f0dd74c82ed2211b137093ed6932b964033ea9c726677f7f0ccae71834e4ca630dce3d129f88d614586fba4d3c1dafeb1b7fb915ecbbdc27fe4708d5b3b9ceb18c4cc4de430dfa187999b81dd69acdfdb9b5b597d5cf6240e86ca2181487220ee9c906389135b40fbc9c03f045d8d0fb2c2531a4985658e6902e2fb01397cda58f71bb772c0ca9214698ddcd6acb6bd2ed48ceae5efa085a4096354a8a90adf549cbbe0815b358007f0ee4c7d07833a1fb1d77093445d598e8218a701df4cb8596880ca6b9f561055efd94aee252166e288702c186636b34aff196f8d4d48488507f59e0fbcabe173a579a29bb6a6708bef706a9d280a7ceba63fbd740077c7fb292113d76ea2f11311d7d13bbb9d5dc9da7832b9113750bc9056e89fdad6c88445cf2b11b64a1205c853af6eb4bc83e239059af1f161f4c8217b7e10bc106242f44fcfd70c97f030570b566194681e9224b34eedf61e64f885d26b2164da1a6c05adc166508e910d7424cdb469632b3cb6c706b3b8a24b5ba7629cfb2f9277d00c0b6d9227e92028e5778f494e9d73f4ac0239834b4db0c01bd0f460f4c5bf6e7a437508f596d096c616057dc6dcd00c67cb96e931727c63e301c526fd8afe11b618b1823958812dc28824e4147538ce39dd63246f53119fd8e87de26034fefe1055fa2c7e0761b43fc189a612e1242df8b2b53d032b98e14d6885ae812b0c9da826854d0c98105ae28253b92c300c878a5ecc8dbb78415eed348a1b94a03a3997c17017891c0173794a2addbb17cb051afe831dc9878bf417a1422522c0e3bcac5b7112377d021b1eaa5b2076d1dc9b3a3972b1f08daede64cd386cb0af0f17713a352cdd2782e82a98e007379f2452fc25c9bb075e8ff517c5ad70d00afbcbf6b32ddd2bb97";
 
-        // Create input JSON file
-        string memory path = "input.json";
-        string memory line = string.concat(
-            '{"a":',
-            vm.toString(a),
-            ',"b":',
-            vm.toString(b),
-            "}"
-        );
-        vm.writeLine(path, line);
+        uint256[] memory pubSignals = new uint256[](2);
+        pubSignals[0] = 1;
+        pubSignals[
+            1
+        ] = 6464294476958346139385024074008223400825166653076969388043746597957512245037;
+        assertTrue(verifyProof(proof, pubSignals));
+    }
 
-        // Generate proof
-        string[] memory genInputs = new string[](8);
-        genInputs[0] = "snarkjs";
-        genInputs[1] = "plonk";
-        genInputs[2] = "fullprove";
-        genInputs[3] = "input.json";
-        genInputs[4] = "circuits/Example_js/Example.wasm";
-        genInputs[5] = "circuits/Example.zkey";
-        genInputs[6] = "proof.json";
-        genInputs[7] = "public.json";
-        vm.ffi(genInputs);
+    function testVerifyExample2() public {
+        bytes
+            memory proof = hex"1e874ab35b68b4ec536f0710223b13e181576171f525e8adabe969b8248db59205e6807259db73ee920aeef0c9261eab269d5b3e18fd4553dece8c33d38d891a090010abdadc6c05822e2e830ce1c1fbe54d0b832b7ad6c5edecef60dbc1b66523bfeb9ca88228df5437c3a979ec1f2c9fb4146af3b05d545efcc01fa169e1d728ac8fbd3f451fd9f3171a824f551f402c0bbc730103b0cfd3a545763866258d291c3dae3135520e08899d9eeed5044879b5a79f9c8c8d122398a126c86ca48d23aeae56270042b921ed80e40e49ed33fc0b0a416a1346840c1e8dd911238fb51ba64b14f0e2439e54f6ff63100f24a575c3605c10cb48c1344261c4c83386a403f76ef1331c69aee3628c9a7a01e01b503f6d58a17e8cda7caeb9e7defb9b3b065a6c6fc1212299440c62b6e0d9bc76aea7cc6f96ea79b93a96a2540caca46511ee40d797927bddb63dbc5136dcc3b90cd585cb1b39f766465c9bd548a209ee3004056309b6e90e0bd821539c0bb5613c818248258e22ce37058fbdfd43bf440b11b90c03af2efeeafb6e49764e4bbda9f741f9e557bf0fb830a42adf920cd11d79e80429ec862b09c6dadbbeb29d0282d2d8b5ffa7579af9eb538781f37e7e2fc3f29deb07be51a227748fc5cba668cc975575e49c52bc6844516526a24e2f161ad59091bb62a9b66fbe46bc22b2bbe8e694a63e6db9efb42a69a8fd08c6931ac298b77b219fd518bbb7e5cdeca038b6c5433278920a0ebd74ab3316d4d0e9028f5f532ad59d525b80ce01d1704828dc630340a4a663e6c3a918715255b2d5241ff052886575b5dc3bce8d57919e48f378545b6d2085ed3aff48eea5f02b4a269290f8cc228adfc265020f7e6566e01441019c0e55bfd15c98e1c69df0f8d80074f81697b7cc7a7e58e3ac128cd04a235e7fc05074d15d96e8fe4cc6aab7d51d3aabcfdbe23c09ec965bcb2bea006cab4e08a9d549319dc5db4e3da050d42318021ce27f0dae0c6f8811b2471cbf1939c6148e688d316a7c4e7da4c15bc18b2bea1d384b093c5bf12c9971e9cb290877b1d7beffddde1804cecdd75705be442700666328b7b57fc41406c4261865a8317a566adab8b4a87ea0dd8794f950c8";
 
-        // Get calldata for proof and output
-        string[] memory inputs = new string[](3);
-        inputs[1] = vm.toString(a);
-        inputs[2] = vm.toString(b);
-
-        inputs[0] = "./prove.sh";
-        bytes memory proof = vm.ffi(inputs);
-
-        inputs[0] = "./output.sh";
-        bytes memory output = vm.ffi(inputs);
-
-        // Delete files
-        string[] memory rmInput = new string[](2);
-        rmInput[0] = "rm";
-
-        rmInput[1] = "input.json";
-        vm.ffi(rmInput);
-        rmInput[1] = "proof.json";
-        vm.ffi(rmInput);
-        rmInput[1] = "public.json";
-        vm.ffi(rmInput);
-
-        uint256[] memory pubSignals = new uint256[](3);
-        pubSignals[0] = bytesToUint(output);
-        pubSignals[1] = a;
-        pubSignals[2] = b;
-
-        assertTrue(verifier.verifyProof(proof, pubSignals));
+        uint256[] memory pubSignals = new uint256[](2);
+        pubSignals[0] = 3;
+        pubSignals[
+            1
+        ] = 6464294476958346139385024074008223400825166653076969388043746597957512245037;
+        assertTrue(verifyProof(proof, pubSignals));
     }
 }

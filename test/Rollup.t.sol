@@ -6,8 +6,8 @@ import "../src/Rollup.sol";
 
 contract RollupTest is Test {
     Rollup public rollup;
-    uint32 public constant LEVELS = 4;
-    uint256 public constant RUNS = 16;
+    uint32 public constant LEVELS = 2;
+    uint256 public constant RUNS = 2**LEVELS;
 
     function setUp() public {
         bytes
@@ -24,8 +24,19 @@ contract RollupTest is Test {
         rollup = new Rollup(LEVELS, addr);
     }
 
+    function testDepositSingleAccount(uint32[RUNS] calldata values) public {
+        bytes32 root = rollup.roots(0);
+        assertEq(root, rollup.zeros(LEVELS - 1));
+
+        for (uint256 i; i < RUNS; i++) {
+            rollup.deposit{value: values[i]}();
+
+            assertTrue(rollup.roots(i) != rollup.roots(i + 1));
+        }
+    }
+
     // Test that the rollup root is changing with each deposit
-    function testDeposit(
+    function testDepositMultipleAccount(
         address[RUNS] calldata senders,
         uint32[RUNS] calldata values
     ) public {
@@ -40,4 +51,51 @@ contract RollupTest is Test {
             assertTrue(rollup.roots(i) != rollup.roots(i + 1));
         }
     }
+
+    function testResolveValidProof() public {
+        address account = 0x71C7656EC7ab88b098defB751B7401B5f6d8976F;
+        uint256 value = 100;
+        bytes
+            memory proof = hex"2910be71a94497087261434ffba162bb84a3b235e056c82add6ce21cdb206a082a10ad60766cf2c8764e9dcda1cbf42f6f6b21b55b50b9d111b90fb1e1a7ad6a131719d91b006a9a80a4238d35032cb137def160d7c9ba02e23e762bf1676d060b12d249dfe3e4baf66f676755fe8812a776e86d81d68ddaff263e622d9abb0b094a7a5e977b789c6ccf8e111a24e6339708a7f2db54f6a51045b10484fa87720984c73d15d06d76a2ea29136df2190384d4773f11fae97d9531aad140923fed13c6f059639961bbfb20ecabdc6d8b8a7141ab2a99786f4c46b672b165804f6e028897cbf93fbaeea55c23426de47e5e28d944e7da6bee86c8aac2896c28d5f91114d47748c23ab3ade390b04a0c8eb6abcf79f1a1ae851c90973abb5de9e6cc2c288e544ac6a4648d0a7fbe5af844d37988f2bb5fc5815ba45f24144cef94c101ae1430d3bbe75bb667cc088d198bfe21ba64f648b2dde762b4591dcc37d788245372c3d3c8b618bf5daf0a18de1486d37582155131d704ba78be2c6c2a151a2f34f8d23e6e8a16e3609e3d6b628cce1dd913be4de9f4d9ab3700086dc3a70a1b9f55369fdf1f0ecd423636a8a833bbade20f836ea316ba9a7678fe0d218be226364ccd45af9a557d90943d450a656c6191755ce5e567c53a01d768c591fea6220e0caa505640515c8b00c0f393c231d787aaec414bc34c846bda88e49236383063cc83e5900c3f1236f534ca89e7648d226d722377e8dd0631bf48ec3eb91a185cd8857643dfff99e60c1d3f3796ad1100934a6e3bd14d84db815ae1a964712d7cd1caa827e14b3122e8d08a8d2ea736e64ca549928da5be8410d3554b453101d0794ff18f87ba57dc0fb627c1c21e45545c5894c6fb65c6e9be1838ee192d0e4a9c498c4b2d7c355a2db76d2d26631968bc18e08e5ad89bcb5d65266d9bc81c8ad43fb53fd354b8d14ff35404c81aabe5b4a7c1c153650089d3a0391711d30179e0a012b43ebbe8e570b65f1d80c55de42247d476a77136395ad699b87e331ad854263b2974b6c067e13417fb892967cd371a0d0a282dfa38fc527eb4ad7e1da86fedcd26b36bfd40a4c72f08b5c5e973fc8939c898a29be0de8348122bb1";
+
+        vm.deal(account, 1000);
+        vm.startPrank(account);
+        rollup.deposit{value: value}();
+        rollup.deposit{value: value}();
+        rollup.deposit{value: value}();
+        rollup.deposit{value: value}();
+
+        rollup.resolve(proof);
+
+        vm.expectRevert("The rollup has been resolved");
+        rollup.deposit();
+    }
+
+    // function testWithdrawInvalidProof() public {
+    //     bytes memory proof;
+
+    //     vm.expectRevert("Proof verification failed");
+    //     rollup.withdraw(proof, address(this), 0);
+    // }
+
+    // function testWithdrawValidProof() public {
+    //     address account = 0x71C7656EC7ab88b098defB751B7401B5f6d8976F;
+    //     uint256 value = 100;
+    //     bytes
+    //         memory proof = hex"2910be71a94497087261434ffba162bb84a3b235e056c82add6ce21cdb206a082a10ad60766cf2c8764e9dcda1cbf42f6f6b21b55b50b9d111b90fb1e1a7ad6a131719d91b006a9a80a4238d35032cb137def160d7c9ba02e23e762bf1676d060b12d249dfe3e4baf66f676755fe8812a776e86d81d68ddaff263e622d9abb0b094a7a5e977b789c6ccf8e111a24e6339708a7f2db54f6a51045b10484fa87720984c73d15d06d76a2ea29136df2190384d4773f11fae97d9531aad140923fed13c6f059639961bbfb20ecabdc6d8b8a7141ab2a99786f4c46b672b165804f6e028897cbf93fbaeea55c23426de47e5e28d944e7da6bee86c8aac2896c28d5f91114d47748c23ab3ade390b04a0c8eb6abcf79f1a1ae851c90973abb5de9e6cc2c288e544ac6a4648d0a7fbe5af844d37988f2bb5fc5815ba45f24144cef94c101ae1430d3bbe75bb667cc088d198bfe21ba64f648b2dde762b4591dcc37d788245372c3d3c8b618bf5daf0a18de1486d37582155131d704ba78be2c6c2a151a2f34f8d23e6e8a16e3609e3d6b628cce1dd913be4de9f4d9ab3700086dc3a70a1b9f55369fdf1f0ecd423636a8a833bbade20f836ea316ba9a7678fe0d218be226364ccd45af9a557d90943d450a656c6191755ce5e567c53a01d768c591fea6220e0caa505640515c8b00c0f393c231d787aaec414bc34c846bda88e49236383063cc83e5900c3f1236f534ca89e7648d226d722377e8dd0631bf48ec3eb91a185cd8857643dfff99e60c1d3f3796ad1100934a6e3bd14d84db815ae1a964712d7cd1caa827e14b3122e8d08a8d2ea736e64ca549928da5be8410d3554b453101d0794ff18f87ba57dc0fb627c1c21e45545c5894c6fb65c6e9be1838ee192d0e4a9c498c4b2d7c355a2db76d2d26631968bc18e08e5ad89bcb5d65266d9bc81c8ad43fb53fd354b8d14ff35404c81aabe5b4a7c1c153650089d3a0391711d30179e0a012b43ebbe8e570b65f1d80c55de42247d476a77136395ad699b87e331ad854263b2974b6c067e13417fb892967cd371a0d0a282dfa38fc527eb4ad7e1da86fedcd26b36bfd40a4c72f08b5c5e973fc8939c898a29be0de8348122bb1";
+
+    //     vm.deal(account, 1000);
+    //     vm.startPrank(account);
+    //     rollup.deposit{value: value}();
+    //     rollup.deposit{value: value}();
+    //     rollup.deposit{value: value}();
+    //     rollup.deposit{value: value}();
+
+    //     assertEq(account.balance, 600);
+
+    //     vm.expectCall(account, "");
+    //     rollup.withdraw(proof, account, value);
+
+    //     assertEq(account.balance, 700);
+    // }
 }

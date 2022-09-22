@@ -1,0 +1,27 @@
+{
+  "name": "battle-rollup",
+  "version": "1.0.0",
+  "description": "",
+  "main": "tree.js",
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  },
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fraserdscott/battle-rollup.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/fraserdscott/battle-rollup/issues"
+  },
+  "homepage": "https://github.com/fraserdscott/battle-rollup#readme",
+  "dependencies": {
+    "big-integer": "^1.6.51",
+    "circomlibjs": "^0.1.7",
+    "fixed-merkle-tree": "^0.7.3",
+    "snarkjs": "^0.5.0"
+  }
+}
