@@ -54,8 +54,52 @@ contract IntegrationTest is Test {
         bytes
             memory proof = hex"1f12a8bf18d4c2240be2f42b6da06005f00ce986588223ecefde8f7669c6577423e0cdfd423a30a1971d7fb098be6ee0037a8eba20ef8da7d56bb55132669d621c4e7ba97507967849ad7b0b2c3c882019ba4b01039fc3188de15cab9b38b6000d48d7513246722205fc09d8f74fa934fa3448a175c363217f39d236249cbfc909bc17eb703abf3c8bbdacc5d6ede50de85950632b481f81af400b61effa54d311d76059cd0dfaede6f28822c564deedccb9ca80f582f88be9504bcf0e7c958e19147410de9900465d6ab6b3e9e3171b1106fd880ed1a5160a3e56923cca99e106e9669489ae61ff5ae230ea93f40d029fa9110356db7225c04c6d6272862195012ae716c7195e8c60444811e0d705717d328984ec7014a73f9b1b46d85366591a463cf54b4e56b2846f087ba9bb746a44ba46e0eb33e122bafc00d768029b10260a4f802b262e7ef9adaf8fdefb10fc6bc8bdc2a0f228cf162669ec11699c6f044187e5dedd7dbb5d02f2f8c5388ac94d71c0b645ffdee41929a9ecfe98fcce2fce4cc03a2edb9abd61408d779d99168b61c60f8e97c2ccd9e8f4f59606450e09416727239ef0ba118170d0c104162888021176592b6635de78ad8a9f6bd6ae25e41b50d940b0e0edab0890655db31de81c593cba3b52ec875b601f085881062a13a746b8f12fba8f5b84bd202a1ed8c1e5f1cf69112608abb6f109339516e003ad4726dce711b9a82238113b3c3f5e9ec0c92d0a3277a25b918a39b8a9eb392a897fd886e5aa2c885971ff03c8617cec3041d5fb3bf87f7f77425cab5c9e371dc75ba519754dd8bf6daef43c946033d9eb73d711d6fc6f7290fa59cf312c180d4ac82f520104187be7932ff3f36b5693586514acb755d675249331e78a26172cbdcaad5c5143b24bc4310aa3dad4b051a63c568aaf4b21bef7e5fe26ef0b02072e9aaa5ca024e8016f98d6fa6b15ba60c0cd7a62a8fdc3213845a2bf1cdf940fe6196eabefde66d461584f3d896650b8a4cfda47c727fa7d33ab4a37d635581ddeba22f738c759b7663f406d65124adb6d89c9582a03a4a0295afc25a5efd525605653b561f84e04a0ab732f5ae46ee4ffdf006e8c030492fb961c9e518d35";
 
-        uint256[] memory pubSignals = new uint256[](2);
+        uint256[] memory pubSignals = new uint256[](1);
         pubSignals[0] = rootJS;
         assertTrue(verifier.verifyProof(proof, pubSignals));
+    }
+
+    function merkleTreeChecker(
+        bytes32 leaf,
+        bytes32 root,
+        bytes32[] memory pathElements,
+        bool[] memory pathIndices
+    ) public view {
+        bytes32 currentLevelHash = leaf;
+
+        for (uint32 i = 0; i < LEVELS; i++) {
+            bytes32 left;
+            bytes32 right;
+            if (pathIndices[i]) {
+                left = pathElements[i];
+                right = currentLevelHash;
+            } else {
+                left = currentLevelHash;
+                right = pathElements[i];
+            }
+            currentLevelHash = tree.hashLeftRight(tree.hasher(), left, right);
+        }
+
+        require(
+            currentLevelHash == root,
+            "Provided root does not match result"
+        );
+    }
+
+    function testMerkleTreeChecker() public {
+        uint256 leafInt = 1234;
+        bytes32 leaf = bytes32(leafInt);
+        tree.insert(leaf);
+
+        bytes32 root = tree.getLastRoot();
+
+        bytes32[] memory pathElements = new bytes32[](LEVELS);
+        for (uint256 i; i < LEVELS; i++) {
+            pathElements[i] = tree.zeros(i);
+            pathElements[i] = tree.zeros(i);
+        }
+        bool[] memory pathIndices = new bool[](LEVELS);
+
+        merkleTreeChecker(leaf, root, pathElements, pathIndices);
     }
 }

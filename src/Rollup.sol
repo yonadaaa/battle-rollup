@@ -30,8 +30,8 @@ contract Rollup is MerkleTreeWithHistory {
     }
 
     function resolve(bytes calldata proof) external payable {
-        uint256[] memory pubSignals = new uint256[](2);
-        pubSignals[0] = uint256(roots[currentRootIndex]);
+        uint256[] memory pubSignals = new uint256[](1);
+        pubSignals[0] = uint256(getLastRoot());
 
         require(
             verifier.verifyProof(proof, pubSignals),
@@ -41,14 +41,49 @@ contract Rollup is MerkleTreeWithHistory {
         resolved = true;
     }
 
-    function withdraw(address account, uint256 value) external payable {
+    function withdraw(
+        address account,
+        uint256 value,
+        bytes32[] calldata pathElements,
+        bool[] calldata pathIndices
+    ) external payable {
         require(resolved, "The rollup has not been resolved");
 
-        // Check if account and value are in the most recent merkle root.
-        // To do this on-chain they'd have to provide a merkle proof.
-        // Maybe do with ZK?
+        bytes32 leaf = hashLeftRight(
+            hasher,
+            bytes32(uint256(account)),
+            bytes32(value)
+        );
+
+        checkMerkleTree(leaf, pathElements, pathIndices);
 
         (bool success, ) = account.call{value: value}("");
         require(success);
+    }
+
+    function checkMerkleTree(
+        bytes32 leaf,
+        bytes32[] calldata pathElements,
+        bool[] calldata pathIndices
+    ) private view {
+        bytes32 currentLevelHash = leaf;
+
+        for (uint32 i = 0; i < levels; i++) {
+            bytes32 left;
+            bytes32 right;
+            if (pathIndices[i]) {
+                left = pathElements[i];
+                right = currentLevelHash;
+            } else {
+                left = currentLevelHash;
+                right = pathElements[i];
+            }
+            currentLevelHash = hashLeftRight(hasher, left, right);
+        }
+
+        require(
+            currentLevelHash == getLastRoot(),
+            "Provided root does not match result"
+        );
     }
 }
