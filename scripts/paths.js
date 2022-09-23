@@ -26,7 +26,7 @@ const getPaths = async () => {
     hashFunction: mimc.hash,
   });
 
-  const pathElementss = LEAVES.map((pair) => {
+  const paths = LEAVES.map((pair) => {
     let index = LEAVES.findIndex((leaf) =>
       leaf.every(function (element, index) {
         return element === pair[index];
@@ -34,27 +34,17 @@ const getPaths = async () => {
     );
 
     if (index < 0) return null;
-    const { pathElements, pathIndices } = merkleTree.path(index);
-    return pathElements;
+
+    return merkleTree.path(index);
   });
 
-  const pathIndicess = LEAVES.map((pair) => {
-    let index = LEAVES.findIndex((leaf) =>
-      leaf.every(function (element, index) {
-        return element === pair[index];
-      })
-    );
-
-    if (index < 0) return null;
-    const { pathIndices } = merkleTree.path(index);
-    return pathIndices;
-  });
-
+  const pathElementss = paths.map((x) => x.pathElements);
+  const pathIndicess = paths.map((x) => x.pathIndices);
   return [merkleTree.root, pathElementss, pathIndicess];
 };
 
 // We need pathElements and indices for all
-getPaths().then(([root, pathElements, pathIndices]) => {
+getPaths().then(([root, pathElementss, pathIndicess]) => {
   const hashedLeaves = LEAVES.map(([address, value]) =>
     mimc.hash(address, value)
   );
@@ -62,8 +52,8 @@ getPaths().then(([root, pathElements, pathIndices]) => {
   const input = {
     leaves: hashedLeaves,
     root: root.toString(),
-    pathElementss: pathElements,
-    pathIndicess: pathIndices,
+    pathElementss,
+    pathIndicess,
   };
 
   console.log(input);
@@ -71,8 +61,8 @@ getPaths().then(([root, pathElements, pathIndices]) => {
   snarkjs.plonk
     .fullProve(
       input,
-      "./circuits/Example_js/Example.wasm",
-      "./circuits/Example.zkey"
+      "./circuits/Rollup_js/Rollup.wasm",
+      "./circuits/Rollup.zkey"
     )
     .then(({ proof, publicSignals }) => {
       snarkjs.plonk

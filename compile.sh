@@ -1,4 +1,4 @@
-name=Example
+name=Rollup
 
 # Generate constraints
 circom circuits/$name.circom -o circuits --r1cs --wasm --sym
