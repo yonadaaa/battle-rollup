@@ -2,6 +2,7 @@
 pragma solidity >=0.7.0;
 
 import "forge-std/Test.sol";
+import "tornado-core/Mocks/MerkleTreeWithHistoryMock.sol";
 import "../src/Rollup.sol";
 
 contract RollupTest is Test {
@@ -13,6 +14,7 @@ contract RollupTest is Test {
     uint256 public constant VALUE = 100;
 
     Rollup public rollup;
+    MerkleTreeWithHistoryMock public stateTree;
 
     function setUp() public {
         bytes
@@ -24,6 +26,7 @@ contract RollupTest is Test {
         }
 
         rollup = new Rollup(LEVELS, addr);
+        stateTree = new MerkleTreeWithHistoryMock(LEVELS, IHasher(addr));
     }
 
     function testDepositSingleAccount(uint32[N] calldata values) public {
@@ -54,57 +57,107 @@ contract RollupTest is Test {
     }
 
     function testResolveValidProof() public {
+        address[N] memory accounts;
+        accounts[0] = 0xAC1c290d321Bb5E7c7FF7A31ED890CbbA9064FB0;
+        accounts[1] = 0x71C7656EC7ab88b098defB751B7401B5f6d8976F;
+        accounts[2] = 0xAbcD16DD77351f25D599a7Fbe6B77C2bAd643aE6;
+        accounts[3] = 0x71C7656EC7ab88b098defB751B7401B5f6d8976F;
+
+        uint256[N] memory values;
+        values[0] = 100;
+        values[1] = 75;
+        values[2] = 250;
+        values[3] = 50;
+
+        uint256[N] memory balances;
+        balances[0] = values[0];
+        balances[1] = values[1] + values[3];
+        balances[2] = values[2];
+
+        bytes
+            memory proof = hex"250c664304a51a2a7543574467896b6a0afbb3e79487ebab1e93973f0c6394332e956962adb41a22764051861c9878accc047dd744742a367e72d9728b44f3600e95c09ecd42b6066b589d313756d146652a0125318415fb58e6749d522d326b1e052ccdd0f5241cbcd3dc66d83aae5c42286f3e39aae05c096a23c85f605754038af4ad30fb475721cfcf7add596ae33cb4bd1132d31470811f3c409abde3d00ddffc77cf9996465f67f6475b5b97b98775716196923bb1b1cc05d387b279ff209f005456907f80ee53f6cb4d60aa008f9b4160ea46c8d96b29d04950ab21b92b6565ed89669cadf9cb395e9fa3fd4670a6ca58c82fb089d7535d535beb8e881f148ffd0b80c3f4cae42fe2ca10f655dec016a4f03f83be06d628195c66077301fefb3f4d6eee22b155a1a2a4fb8e54823ec8da85a1f723fc3d6d55c78784b92dcb49fbdcf625b86e0e842c67a675f7e0e126d48cd3caa7a7bb9a15dcdff03005c215690e428dc948366c8d619031d1b3e9a209974102e5938d7c6563df28050c2595f437282c3ecafdf41600d3c65f2ba133e76d78470e8e02b9afa9ebf7902fbb73b8ede41fb2d08d0309499e6fccdf1bcb8a34a7f86b8863ff611191638c0ca04be4687d5e31f1af09a833053537c1d36fb89baab1d3231b37783299fb9e1f8b20ec425afe70fc840704aa73e026d4b52eda429d9ccab8c69dbf798f4e4012f116982207a725964f21f5d848c2de582af9c9803c230703f347c5b20b9a4019db371481841bdd35cf6b19178ff40c2e2dabbcbdae58735c2d8e55fd55c9d4199823637403726f6fc1f9fd869976c199e56c4f10f9a272d1a36b1f517cba19099771fd277aaab40b0ac2fcaa9d8459ec0a72be7ea549198954b565b291a1611dde601623a650e451c81fde9fdbd3f5f6bfc367480e59ddeacf385cac8b404d2c0090cf9760af2558ddd9b022b00692463920c39601a7eee32e8906bbf3e4f706f0f283933beec69c08570c8fa7484f60f579d3e2be0d6b0f43636ff2348774018b000848bc31679b5c042e555e9dbb87bc9a28462b3753db059d4db8f1fec80a59908f710a259fe34eb9412a28b3a56e6da7d5b9fcaca1a86c8507ff841901";
+
         bytes32[] memory pathElements = new bytes32[](LEVELS);
         bool[] memory pathIndices = new bool[](LEVELS);
 
-        bytes32 leaf1 = rollup.hashLeftRight(
-            rollup.hasher(),
-            bytes32(uint256(ACCOUNT)),
-            bytes32(0)
-        );
-        bytes32 leaf2 = rollup.hashLeftRight(
-            rollup.hasher(),
-            bytes32(uint256(ACCOUNT)),
-            bytes32(VALUE * N)
-        );
-        bytes32 left = rollup.hashLeftRight(rollup.hasher(), leaf1, leaf2);
-        bytes32 right = rollup.hashLeftRight(rollup.hasher(), leaf1, leaf1);
-        bytes32 stateRoot = rollup.hashLeftRight(rollup.hasher(), left, right);
-
-        bytes
-            memory proof = hex"0c6c3d5222b92505718bc37ab63e16b68c51f07e0e1bae4e54ccb5cc7a00d565174bece69c41917b49ae8075b1192a2d22cb733b113604d1f32e3fd5192bf3ad035334f698f70e9a44843d5d4e5012547ce1317e7a141458d50945500825acde0961c4b7a79305397a78cc2c9d727425c309361d4bb699c8cad0d93a92f1d823068c7f12ef7ca2cb6988acbab3c5fe0592972ad084933db7a5b6bd6f2cc3449e2ecbf43a53e7ecac16aa1c9d84c8486678226cab3b44a9c990658e29548fc19b033c367087af7fd057839e0f0dbac6900e90668d0c6ab84969bafd8458e003f513698815cfb0d046b905287d624b48e554c21e008537ad9afdb1bea09c5c86182f72703ef740c2f3ef49e1eedcd056218a5997c25bef172238623ea05b4cfe6008ba34a08f90bb1c18e75bd6ef4f42e4125bc094eb87c7bd9ac0be3c282d5307018acc3b9e7e56546cad05ee8710e2506cf86dd10194fb9a0642af7eae8b83b20a4463502cbbad66450b5741a54072a8999fe3593c1ae1341b16fac00c752ab00a9bcd462ca0d33764b419e21c66d67038621a5444a82276f1a632507abc82e003e005ccffd436f2b097d6f086c44c089b0e0b90cfe30852f83eea799b3b92072877042360e2d0acf78d01abde5741f39ad2c8c39649d9b12f725487c118fb3517d0861e27f1947a3c5b8ac1671dc516e4e46a5dbf61c2b13cddefe4f809aec3017045d402f2c8738fe1da032ba96c86edb1a8daf6d44d9b2892cf92d9c2100b261c0621df3e2c16e3f99eae9e2a40d9d30b8e5be0235423e4f1d26a8f514a1e2e7ae0dcb30a6fa76b02b0ab909ba54e3033830e8060c61b2a380baf9b27041f11cbaaf1e7afff984c14a2cd05218fc0a6af202a27e048b3a8bbf1bb50c84a081e406d8ecaf00b8fd37412b2adfc406219877b496bf7cd68620729633a4a01761dbdb34def75f6787bb19d694ea48bd2e9cb1b87ce4c43dae418fc856f7c9c7a1f4c275694d636ccf5f503dc45f7e141ce645c3cba9b305ebbdccf3f70b9d91128e3f81ddb3bedd77d5bbb1e9d145eb1e8212c5edf8bbda6319718bbce4f572616638084b3101a63f53f8eeccb52440d8b2ac4ac6b8f8cf726fdcc8db6c76631";
+        for (uint256 i; i < N; i++) {
+            stateTree.insert(
+                stateTree.hashLeftRight(
+                    stateTree.hasher(),
+                    bytes32(uint256(accounts[i])),
+                    bytes32(balances[i])
+                )
+            );
+        }
 
         // Deposit into the rollup
-        vm.deal(ACCOUNT, INITIAL_BALANCE);
-        vm.startPrank(ACCOUNT);
         for (uint256 i; i < N; i++) {
-            rollup.deposit{value: VALUE}();
-            assertEq(ACCOUNT.balance, INITIAL_BALANCE - VALUE * (i + 1));
+            vm.deal(accounts[i], values[i]);
+            vm.prank(accounts[i]);
+            rollup.deposit{value: values[i]}();
+            assertEq(accounts[i].balance, 0);
         }
 
         // Attempt to withdraw from the rollup before resolution
-        vm.expectRevert("The rollup has not been resolved");
-        rollup.withdraw(ACCOUNT, VALUE * N, pathElements, pathIndices);
+        for (uint256 i; i < N; i++) {
+            vm.expectRevert("The rollup has not been resolved");
+            rollup.withdraw(
+                accounts[i],
+                balances[i],
+                pathElements,
+                pathIndices
+            );
+        }
 
         // Resolve the rollup
-        rollup.resolve(stateRoot, proof);
+        rollup.resolve(stateTree.getLastRoot(), proof);
 
         // Attempt to deposit into the rollup after resolution
         vm.expectRevert("The rollup has been resolved");
         rollup.deposit();
 
         // Attempt to withdraw from the rollup without a valid merkle proof
-        vm.expectRevert("Provided root does not match result");
-        rollup.withdraw(ACCOUNT, VALUE, pathElements, pathIndices);
+        for (uint256 i; i < N; i++) {
+            vm.expectRevert("Provided root does not match result");
+            rollup.withdraw(
+                accounts[i],
+                balances[i],
+                pathElements,
+                pathIndices
+            );
+        }
 
         // Withdraw from the rollup
-        pathElements[0] = leaf1;
-        pathElements[1] = right;
+        pathElements[0] = stateTree.hashLeftRight(
+            stateTree.hasher(),
+            bytes32(uint256(accounts[0])),
+            bytes32(balances[0])
+        );
+        MerkleTreeWithHistoryMock temp = new MerkleTreeWithHistoryMock(
+            1,
+            stateTree.hasher()
+        );
+        temp.insert(
+            stateTree.hashLeftRight(
+                stateTree.hasher(),
+                bytes32(uint256(accounts[2])),
+                bytes32(balances[2])
+            )
+        );
+        temp.insert(
+            stateTree.hashLeftRight(
+                stateTree.hasher(),
+                bytes32(uint256(accounts[1])),
+                bytes32(balances[3])
+            )
+        );
+        pathElements[1] = temp.getLastRoot();
+
         pathIndices[0] = true;
 
-        vm.expectCall(ACCOUNT, "");
-        rollup.withdraw(ACCOUNT, VALUE * N, pathElements, pathIndices);
+        vm.expectCall(accounts[1], "");
+        rollup.withdraw(accounts[1], balances[1], pathElements, pathIndices);
 
-        assertEq(ACCOUNT.balance, INITIAL_BALANCE);
+        assertEq(accounts[1].balance, balances[1]);
     }
 }
