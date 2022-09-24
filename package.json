@@ -2,7 +2,6 @@
   "name": "battle-rollup",
   "version": "1.0.0",
   "description": "",
-  "main": "tree.js",
   "directories": {
     "lib": "lib",
     "test": "test"

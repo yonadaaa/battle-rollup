@@ -5,12 +5,9 @@ import "forge-std/Test.sol";
 import "tornado-core/Mocks/MerkleTreeWithHistoryMock.sol";
 import "../src/PlonkVerifier.sol";
 
-uint32 constant LEVELS = 2;
-
 contract IntegrationTest is Test {
-    address public constant ACCOUNT =
-        0x71C7656EC7ab88b098defB751B7401B5f6d8976F;
-    uint256 public constant VALUE = 100;
+    uint32 public constant LEVELS = 2;
+    uint256 public constant N = 2**LEVELS;
 
     PlonkVerifier public verifier;
     MerkleTreeWithHistoryMock public tree;
@@ -27,74 +24,66 @@ contract IntegrationTest is Test {
             }
         }
 
-        tree = new MerkleTreeWithHistoryMock(LEVELS, IHasher(addr));
         verifier = new PlonkVerifier();
+        tree = new MerkleTreeWithHistoryMock(LEVELS, IHasher(addr));
     }
 
     // TODO: We need to make this less fickle, handle the case where tree is not fully filled
     function testTreeProof() public {
-        // Hardcoded variables from JS script
-        uint256 stateRoot = 2444908220154618206997160457162789533248065589494336717538895445310405239934;
-        bytes
-            memory proof = hex"25498e1664718e633c2eb9456619bca537c609b117b7a4d1c4019bc143f772a80f08449dfd4e4af3a628d92c10a2d99fcb9d1608a347af7f064d2ac6f71a8f8f23af85310f9029d5b9222e0c89a0130d41e9b3f5edb4a4fb8744b1565c80326811276221a14cce2d5286496c9616b5bb846cbdba4a5af7e14e6dd53243bde14d1e74cbefedb9fba3f02370fb2ea1d399a7906a4b60ef6a01c2e6bda579047b1c04d6aea6df8d6a19a75f0774b2adb8676e9cb01751bec827ed320b6b311b308122aff089ff78bbd2db3673278b58559a691cb0cbfe8cb8bb7643b70d522387bb18d377ffe22195b6b39b45ef62d8710618aa6a13c06db456ac489edaaa6e6bb323cd288549f81a05c01f81725c67d0bd215add99dba3254abe783e5eab32fcce14de132cfc913ed07fff0ead42238dd3732ef37736c855345448fda3cac314e121c550ef4515780e6332eba90c8aad3a646622d2dc33f83d46c87754f8dc0c43134c2186d9b551e694aa2ebcbb3593fb3756cd0df2aea853f2ee76fe8888ef7d1043248464e6c0038395d31b7557fdd1d3ebf84d4dc48601e88e6e1125895e0927a280e4fb08af281db694825d8a7d68c0ece4426cfc3718f65b8c5f9af7cc7b0a11f24efd4e2d4efaf5b50f333f897ea024fa840ddae001e6faad3599da92fc020705baa18746e83dd95285c27d690c2051c79dffa0d9604d04f7f92bb277a5214f972013ef3a5ca140aa4bb18732284ee483aaa93cdfde3c2edf01b25c55e30aa7d4d291830ed8f5e1e5bedc17227e253589f1ddb1ce7011c6c83aa5c7607225d9bf9de99e9157b46800958c1909f57828bbe0d210bd7db7292c979de2a7282eb9c6218d25727d92bc6d18cccc05c600db850b6c36927d913420fd241dd6991237f1fd2b8dfc8bb013b4c852561b919f7dc2d0781e833861b1f6f400f761251ccabc1fc6287b1654b14d170815d2eaa5d64c8affd77e064c4262d65ae2356c0c8d956a2927dd4d5f701776b41b975e49572f390871fb9893154ac05f72afae1cf34538f98bf1fa975be39b183e177efcd7bf3a8f0feed38a576049655128781e6e1da653a6320dcbeeb3e6e30ec2a15080bfe6a3b01535970163defdede9f3";
+        address[] memory accounts = new address[](N);
+        accounts[0] = 0xAC1c290d321Bb5E7c7FF7A31ED890CbbA9064FB0;
+        accounts[1] = 0x71C7656EC7ab88b098defB751B7401B5f6d8976F;
+        accounts[2] = 0x71C7656EC7ab88b098defB751B7401B5f6d8976F;
+        accounts[3] = 0x71C7656EC7ab88b098defB751B7401B5f6d8976F;
 
-        bytes32 leaf = tree.hashLeftRight(
+        uint256[] memory values = new uint256[](N);
+        values[0] = 100;
+        values[1] = 100;
+        values[2] = 250;
+        values[3] = 100;
+
+        bytes32 leaf1 = tree.hashLeftRight(
             tree.hasher(),
-            bytes32(uint256(ACCOUNT)),
-            bytes32(VALUE)
+            bytes32(uint256(accounts[0])),
+            bytes32(uint256(100))
+        );
+        bytes32 leaf2 = tree.hashLeftRight(
+            tree.hasher(),
+            bytes32(uint256(accounts[1])),
+            bytes32(uint256(450))
+        );
+        bytes32 leaf3 = tree.hashLeftRight(
+            tree.hasher(),
+            bytes32(uint256(accounts[2])),
+            bytes32(uint256(0))
+        );
+        bytes32 leaf4 = tree.hashLeftRight(
+            tree.hasher(),
+            bytes32(uint256(accounts[3])),
+            bytes32(uint256(0))
+        );
+        bytes32 left = tree.hashLeftRight(tree.hasher(), leaf1, leaf2);
+        bytes32 right = tree.hashLeftRight(tree.hasher(), leaf3, leaf4);
+        uint256 stateRoot = uint256(
+            tree.hashLeftRight(tree.hasher(), left, right)
         );
 
-        tree.insert(bytes32(leaf));
-        tree.insert(bytes32(leaf));
-        tree.insert(bytes32(leaf));
-        tree.insert(bytes32(leaf));
+        bytes
+            memory proof = hex"1e840bd79b9a4dc988df2e8184975e1d6800acba2495c5813c93c1ea0047a6640add92fe7b80ffd26aa7ef368daeb75640324434be3c62ac91e3376d251b4a061c4583f8e5dc43ea46010b5b98f95f79fbf4ee4095c441094a5d592d470fda922e72a3d4b24ef3c24e8e361d65cc27feebd1ecfe6d3de1c80f46e5c69fedc7fa1b20c8b809bc55779d434925f043a255665ccc100da5aa886460c7a3ae43751a0b93993cec0e0044c0dbac9366bf75447c4885687c896308f03afaa2977cb9132a5c40ee6c2ff893bf0a2ce17a061edcdf8400b707a00be3c0015c41c3af6a0c2bf147de7450d2c8b5a539c0056eca687e8a0bd1fb572b04884fda4d8520ef4418251808ef5726631835c0786408002bc13d0a51f1e26a979c03b37cd464426d0f713fc490769757de5651041bb565e8521088b137efa40b951e4c0d377f8ba81b576f2762aa39f8a02ed97236df1bde7be63fb983dd7a7d7dc2e99e0d99f0361167d38b328778159f9382baf2a29f90af24316e3a3b8ca0777d8eef81016f5e1d730c41fde2cfcf425c4bbd875f6d90e95cdce9d144a158c15d1cfd3925f670123843ee9a09820d1d4c96a374e3af554398fb04e6b6d63b49d312003f0a09f826e43c3b9abaadbc88f4ff763f7947a72e3a1aa708dc409da3e558eef88184b812c54853d8a303da9e88fcc07fdb8ef54e8cdea3b3f90b9ccf5822e3d1e58b610a3b97adc7dff621b691dac1b2c4090eb13056b9e8c838327419846d9fa225411a0a7f1acbe098e910d4e1eb389132bf7543609bdd4b2cf8c223751ec35567ed2d5ed7090e0311b0e0218155bebccf23996c5ce9be2925fe005468f9bcc3ee120e615d80b44f035336f1950fdf77659369c674721eaf8f5bc5fa3394380fe3e704306d6d670f69b38b380983ee53d23e57f01d2d08c39c500e308a5d64da2df5187b4be87574910b5bc38347a07caf190ee62ee27e7d3930bd53d8610fa1b3ee1396ea5941210ed5e2b858e972a2ece98b7baffdea5cf19070eac72b971ebb041acab5d62b9b51aeb3d458af770dac2dc53640f9f15f1a401613a3e7d8f5e99326d0be621e60026e4c57189be6096bb10c2267db594970d9b4586a998b03ba49";
+
+        for (uint256 i; i < N; i++) {
+            bytes32 leaf = tree.hashLeftRight(
+                tree.hasher(),
+                bytes32(uint256(accounts[i])),
+                bytes32(values[i])
+            );
+
+            tree.insert(bytes32(leaf));
+        }
 
         uint256[] memory pubSignals = new uint256[](2);
         pubSignals[0] = uint256(tree.getLastRoot());
         pubSignals[1] = stateRoot;
         assertTrue(verifier.verifyProof(proof, pubSignals));
-    }
-
-    function merkleTreeChecker(
-        bytes32 leaf,
-        bytes32 root,
-        bytes32[] memory pathElements,
-        bool[] memory pathIndices
-    ) private view {
-        bytes32 currentLevelHash = leaf;
-
-        for (uint32 i = 0; i < LEVELS; i++) {
-            bytes32 left;
-            bytes32 right;
-            if (pathIndices[i]) {
-                left = pathElements[i];
-                right = currentLevelHash;
-            } else {
-                left = currentLevelHash;
-                right = pathElements[i];
-            }
-            currentLevelHash = tree.hashLeftRight(tree.hasher(), left, right);
-        }
-
-        require(
-            currentLevelHash == root,
-            "Provided root does not match result"
-        );
-    }
-
-    function testMerkleTreeChecker() public {
-        bytes32 leaf = bytes32(uint256(1234));
-        tree.insert(leaf);
-
-        bytes32 root = tree.getLastRoot();
-
-        bytes32[] memory pathElements = new bytes32[](LEVELS);
-        for (uint256 i; i < LEVELS; i++) {
-            pathElements[i] = tree.zeros(i);
-            pathElements[i] = tree.zeros(i);
-        }
-        bool[] memory pathIndices = new bool[](LEVELS);
-
-        merkleTreeChecker(leaf, root, pathElements, pathIndices);
     }
 }

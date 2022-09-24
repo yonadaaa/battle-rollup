@@ -57,18 +57,18 @@ contract RollupTest is Test {
         bytes32[] memory pathElements = new bytes32[](LEVELS);
         bool[] memory pathIndices = new bool[](LEVELS);
 
-        bytes32 empty = rollup.hashLeftRight(
+        bytes32 leaf1 = rollup.hashLeftRight(
             rollup.hasher(),
             bytes32(uint256(ACCOUNT)),
             bytes32(0)
         );
-        bytes32 prize = rollup.hashLeftRight(
+        bytes32 leaf2 = rollup.hashLeftRight(
             rollup.hasher(),
             bytes32(uint256(ACCOUNT)),
             bytes32(VALUE * N)
         );
-        bytes32 left = rollup.hashLeftRight(rollup.hasher(), empty, prize);
-        bytes32 right = rollup.hashLeftRight(rollup.hasher(), empty, empty);
+        bytes32 left = rollup.hashLeftRight(rollup.hasher(), leaf1, leaf2);
+        bytes32 right = rollup.hashLeftRight(rollup.hasher(), leaf1, leaf1);
         bytes32 stateRoot = rollup.hashLeftRight(rollup.hasher(), left, right);
 
         bytes
@@ -79,8 +79,7 @@ contract RollupTest is Test {
         vm.startPrank(ACCOUNT);
         for (uint256 i; i < N; i++) {
             rollup.deposit{value: VALUE}();
-
-            assertEq(ACCOUNT.balance, 1000 - VALUE * (i + 1));
+            assertEq(ACCOUNT.balance, INITIAL_BALANCE - VALUE * (i + 1));
         }
 
         // Attempt to withdraw from the rollup before resolution
@@ -99,7 +98,7 @@ contract RollupTest is Test {
         rollup.withdraw(ACCOUNT, VALUE, pathElements, pathIndices);
 
         // Withdraw from the rollup
-        pathElements[0] = empty;
+        pathElements[0] = leaf1;
         pathElements[1] = right;
         pathIndices[0] = true;
 
