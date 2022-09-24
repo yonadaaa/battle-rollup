@@ -7,7 +7,7 @@ import "./PlonkVerifier.sol";
 
 contract Rollup is MerkleTreeWithHistory {
     PlonkVerifier private verifier;
-    bool private resolved;
+    bytes32 private stateRoot;
 
     constructor(uint32 levels, address hasher)
         MerkleTreeWithHistory(levels, IHasher(hasher))
@@ -16,7 +16,7 @@ contract Rollup is MerkleTreeWithHistory {
     }
 
     function deposit() external payable {
-        require(!resolved, "The rollup has been resolved");
+        require(stateRoot == "", "The rollup has been resolved");
 
         uint256 leaf = uint256(
             hashLeftRight(
@@ -39,7 +39,7 @@ contract Rollup is MerkleTreeWithHistory {
             "Proof verification failed"
         );
 
-        resolved = true;
+        stateRoot = state;
     }
 
     function withdraw(
@@ -48,7 +48,7 @@ contract Rollup is MerkleTreeWithHistory {
         bytes32[] calldata pathElements,
         bool[] calldata pathIndices
     ) external {
-        require(resolved, "The rollup has not been resolved");
+        require(stateRoot != "", "The rollup has not been resolved");
 
         bytes32 leaf = hashLeftRight(
             hasher,
@@ -59,7 +59,7 @@ contract Rollup is MerkleTreeWithHistory {
         checkMerkleTree(leaf, pathElements, pathIndices);
 
         (bool success, ) = account.call{value: value}("");
-        require(success);
+        require(success, "Send failed");
     }
 
     function checkMerkleTree(
@@ -82,9 +82,8 @@ contract Rollup is MerkleTreeWithHistory {
             currentLevelHash = hashLeftRight(hasher, left, right);
         }
 
-        // TODO: this should be state
         require(
-            currentLevelHash == getLastRoot(),
+            currentLevelHash == stateRoot,
             "Provided root does not match result"
         );
     }

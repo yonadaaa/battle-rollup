@@ -11,11 +11,21 @@ const LEAVES = [
   [649562641434947955654834859981556155081347864431n, 100],
 ];
 
+const BALANCES = [
+  [649562641434947955654834859981556155081347864431n, 0],
+  [
+    649562641434947955654834859981556155081347864431n,
+    LEAVES.map((l) => l[1]).reduce((partialSum, a) => partialSum + a, 0),
+  ],
+  [649562641434947955654834859981556155081347864431n, 0],
+  [649562641434947955654834859981556155081347864431n, 0],
+];
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-const getPaths = async () => {
+const getPathsEvents = async () => {
   await sleep(500);
 
   const hashedLeaves = LEAVES.map(([address, value]) =>
@@ -26,31 +36,41 @@ const getPaths = async () => {
     hashFunction: mimc.hash,
   });
 
-  const paths = LEAVES.map((pair) => {
-    let index = LEAVES.findIndex((leaf) =>
-      leaf.every(function (element, index) {
-        return element === pair[index];
-      })
-    );
-
-    if (index < 0) return null;
-
-    return merkleTree.path(index);
-  });
+  const paths = LEAVES.map((l, i) => merkleTree.path(i));
 
   const pathElementss = paths.map((x) => x.pathElements);
   const pathIndicess = paths.map((x) => x.pathIndices);
   return [merkleTree.root, pathElementss, pathIndicess];
 };
 
-getPaths().then(([root, pathElementss, pathIndicess]) => {
+const getPathsState = () => {
+  const hashedLeaves = BALANCES.map(([address, value]) =>
+    mimc.hash(address, value)
+  );
+
+  const merkleTree = new MerkleTree.MerkleTree(LEVELS, hashedLeaves, {
+    hashFunction: mimc.hash,
+  });
+
+  const paths = BALANCES.map((b, i) => merkleTree.path(i));
+
+  const pathElementss = paths.map((x) => x.pathElements);
+  const pathIndicess = paths.map((x) => x.pathIndices);
+  return [merkleTree.root, pathElementss, pathIndicess];
+};
+
+getPathsEvents().then(([eventRoot, eventPathElementss, eventPathIndicess]) => {
+  const [stateRoot, statePathElementss, statePathIndicess] = getPathsState();
+
   const input = {
+    eventRoot: eventRoot.toString(),
+    stateRoot: stateRoot.toString(),
     eventAccounts: LEAVES.map((l) => l[0]),
     eventValues: LEAVES.map((l) => l[1]),
-    root: root.toString(),
-    state: root.toString(),
-    pathElementss,
-    pathIndicess,
+    eventPathElementss,
+    eventPathIndicess,
+    statePathElementss,
+    statePathIndicess,
   };
 
   console.log(input);

@@ -5,9 +5,14 @@ import "forge-std/Test.sol";
 import "../src/Rollup.sol";
 
 contract RollupTest is Test {
-    Rollup public rollup;
     uint32 public constant LEVELS = 2;
     uint256 public constant N = 2**LEVELS;
+    uint256 public constant INITIAL_BALANCE = 1000;
+    address public constant ACCOUNT =
+        0x71C7656EC7ab88b098defB751B7401B5f6d8976F;
+    uint256 public constant VALUE = 100;
+
+    Rollup public rollup;
 
     function setUp() public {
         bytes
@@ -16,9 +21,6 @@ contract RollupTest is Test {
         address addr;
         assembly {
             addr := create(0, add(bytecode, 32), mload(bytecode))
-            if iszero(extcodesize(addr)) {
-                revert(0, 0)
-            }
         }
 
         rollup = new Rollup(LEVELS, addr);
@@ -35,8 +37,7 @@ contract RollupTest is Test {
         }
     }
 
-    // Test that the rollup root is changing with each deposit
-    function testDepositMultipleAccount(
+    function testDepositMultipleAccounts(
         address[N] calldata senders,
         uint32[N] calldata values
     ) public {
@@ -53,57 +54,58 @@ contract RollupTest is Test {
     }
 
     function testResolveValidProof() public {
-        address account = 0x71C7656EC7ab88b098defB751B7401B5f6d8976F;
-        uint256 value = 100;
-        bytes
-            memory proof = hex"2eb0abca082c7c60b0476ea1af5e561209cb06eb431209430ffba513dced09680965d616e398ffc4fd778ef33a2b8ddacb97fcc240efe471692d05706129de040afff52acb937c3cf027490afd7a84eb21c643d2cf3ba76652610bc59a40b7b909a3fe8a841d05bf264df780ebea28659f88c8b1a8ec5591157384edbd847e6d1b8eb83bae25bc7b0d3ecd82a86a11076b7e4ca5711288412aa94d3b63609d060609c676800d1d003da57ba2bb23eeb3f445cf2e7f4d6b82efc97e811cb15a6a2efeef4dbc2a80878f3491f91f3880944fb99ad610376ab378ef57dfcf27ecc312b49c5365ab17cba23768f781010a8d7427a7e3896deb5f6ceac21614ba3b982052502029a586e0cb584cf2ea20ac08e012545f0470b7394b2058d69c97b83426277ca159dd017d76fa306d2ddfe06119abe0ffc753a6abd9b57c4c5deeee7606d53fa0150dbd05f2bd0e7894732314f95b9c597536f979b570acfb85d343cc0a98bd37826bad3816528447745d4b0d97fbe99884fd0adde24e7b5e5e7c5fff25a8b45954788ba8beadf013f255ae83277a04fa8cbb4d67ef3e7aae981cdd6606379067545dcd624841a5d30cc0cdff41d56c40f952a77059e84e83fbd511d02417ba182628904458d5380f5d730159e2574bcfd69f2b186d7d65aedf60126b23307f00e2a732751f07720ff404cf338295af35c7c43bd0e1abe0be6175fbb829d229d1280ce8ef568fc2287d8c8f304d4456c3dc3114b1642bb6ef2d6357d203c4297ae7a04b23f55a1321b92e1890f82a2a287db87919dc9920bff5d7e6782579b438b0426836c0e85c3296654c43fc7be6374bfe7ab18d8b947829ca97ce097a202dc690206ed68a6f0534365095200fcbbac111f61fffdd0983959e310503f61625a5806ea97dd6cea537e19d2fd5abd67afc7889cfb57839d5d484d1ce2ee5b02672b50b7395eaf25c73ce0b4029169aa9b7d29ecf70b982dfc14a1a451263111d93016399e60e0d148b63e8822edbb67a3361e34ebac4bf2ad553c1bf2ec8ce31314ca5c6bc5f4627b113b79d35083a0d220bae4d001fbfce2f0e676227fa3648282de63f5f6fd789e790a7ad7bd4b86b89bda8b92d16d16bbe375395";
-
-        // Deposit into the rollup
-        vm.deal(account, 1000);
-        vm.startPrank(account);
-        for (uint256 i; i < N; i++) {
-            rollup.deposit{value: value}();
-
-            assertEq(account.balance, 1000 - value * (i + 1));
-        }
-
-        // Attempt to withdraw from the rollup before resolution
         bytes32[] memory pathElements = new bytes32[](LEVELS);
         bool[] memory pathIndices = new bool[](LEVELS);
 
+        bytes32 empty = rollup.hashLeftRight(
+            rollup.hasher(),
+            bytes32(uint256(ACCOUNT)),
+            bytes32(0)
+        );
+        bytes32 prize = rollup.hashLeftRight(
+            rollup.hasher(),
+            bytes32(uint256(ACCOUNT)),
+            bytes32(VALUE * N)
+        );
+        bytes32 left = rollup.hashLeftRight(rollup.hasher(), empty, prize);
+        bytes32 right = rollup.hashLeftRight(rollup.hasher(), empty, empty);
+        bytes32 stateRoot = rollup.hashLeftRight(rollup.hasher(), left, right);
+
+        bytes
+            memory proof = hex"0c6c3d5222b92505718bc37ab63e16b68c51f07e0e1bae4e54ccb5cc7a00d565174bece69c41917b49ae8075b1192a2d22cb733b113604d1f32e3fd5192bf3ad035334f698f70e9a44843d5d4e5012547ce1317e7a141458d50945500825acde0961c4b7a79305397a78cc2c9d727425c309361d4bb699c8cad0d93a92f1d823068c7f12ef7ca2cb6988acbab3c5fe0592972ad084933db7a5b6bd6f2cc3449e2ecbf43a53e7ecac16aa1c9d84c8486678226cab3b44a9c990658e29548fc19b033c367087af7fd057839e0f0dbac6900e90668d0c6ab84969bafd8458e003f513698815cfb0d046b905287d624b48e554c21e008537ad9afdb1bea09c5c86182f72703ef740c2f3ef49e1eedcd056218a5997c25bef172238623ea05b4cfe6008ba34a08f90bb1c18e75bd6ef4f42e4125bc094eb87c7bd9ac0be3c282d5307018acc3b9e7e56546cad05ee8710e2506cf86dd10194fb9a0642af7eae8b83b20a4463502cbbad66450b5741a54072a8999fe3593c1ae1341b16fac00c752ab00a9bcd462ca0d33764b419e21c66d67038621a5444a82276f1a632507abc82e003e005ccffd436f2b097d6f086c44c089b0e0b90cfe30852f83eea799b3b92072877042360e2d0acf78d01abde5741f39ad2c8c39649d9b12f725487c118fb3517d0861e27f1947a3c5b8ac1671dc516e4e46a5dbf61c2b13cddefe4f809aec3017045d402f2c8738fe1da032ba96c86edb1a8daf6d44d9b2892cf92d9c2100b261c0621df3e2c16e3f99eae9e2a40d9d30b8e5be0235423e4f1d26a8f514a1e2e7ae0dcb30a6fa76b02b0ab909ba54e3033830e8060c61b2a380baf9b27041f11cbaaf1e7afff984c14a2cd05218fc0a6af202a27e048b3a8bbf1bb50c84a081e406d8ecaf00b8fd37412b2adfc406219877b496bf7cd68620729633a4a01761dbdb34def75f6787bb19d694ea48bd2e9cb1b87ce4c43dae418fc856f7c9c7a1f4c275694d636ccf5f503dc45f7e141ce645c3cba9b305ebbdccf3f70b9d91128e3f81ddb3bedd77d5bbb1e9d145eb1e8212c5edf8bbda6319718bbce4f572616638084b3101a63f53f8eeccb52440d8b2ac4ac6b8f8cf726fdcc8db6c76631";
+
+        // Deposit into the rollup
+        vm.deal(ACCOUNT, INITIAL_BALANCE);
+        vm.startPrank(ACCOUNT);
+        for (uint256 i; i < N; i++) {
+            rollup.deposit{value: VALUE}();
+
+            assertEq(ACCOUNT.balance, 1000 - VALUE * (i + 1));
+        }
+
+        // Attempt to withdraw from the rollup before resolution
         vm.expectRevert("The rollup has not been resolved");
-        rollup.withdraw(account, value, pathElements, pathIndices);
+        rollup.withdraw(ACCOUNT, VALUE * N, pathElements, pathIndices);
 
         // Resolve the rollup
-        rollup.resolve(rollup.getLastRoot(), proof);
+        rollup.resolve(stateRoot, proof);
 
-        // Attempt to deposit into the rollup
+        // Attempt to deposit into the rollup after resolution
         vm.expectRevert("The rollup has been resolved");
         rollup.deposit();
 
         // Attempt to withdraw from the rollup without a valid merkle proof
         vm.expectRevert("Provided root does not match result");
-        rollup.withdraw(account, value, pathElements, pathIndices);
+        rollup.withdraw(ACCOUNT, VALUE, pathElements, pathIndices);
 
         // Withdraw from the rollup
-        bytes32 leaf = rollup.hashLeftRight(
-            rollup.hasher(),
-            bytes32(uint256(account)),
-            bytes32(value)
-        );
+        pathElements[0] = empty;
+        pathElements[1] = right;
+        pathIndices[0] = true;
 
-        pathElements[0] = leaf;
-        for (uint256 i = 1; i < LEVELS; i++) {
-            pathElements[i] = rollup.hashLeftRight(
-                rollup.hasher(),
-                pathElements[i - 1],
-                pathElements[i - 1]
-            );
-        }
+        vm.expectCall(ACCOUNT, "");
+        rollup.withdraw(ACCOUNT, VALUE * N, pathElements, pathIndices);
 
-        vm.expectCall(account, "");
-        rollup.withdraw(account, value, pathElements, pathIndices);
-
-        assertEq(account.balance, 1000 - value * (N - 1));
+        assertEq(ACCOUNT.balance, INITIAL_BALANCE);
     }
 }
