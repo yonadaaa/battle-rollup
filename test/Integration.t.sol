@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity >=0.7.0;
+pragma abicoder v2;
 
 import "forge-std/Test.sol";
 import "tornado-core/Mocks/MerkleTreeWithHistoryMock.sol";
@@ -30,40 +31,33 @@ contract IntegrationTest is Test {
 
     // TODO: We need to make this less fickle, handle the case where tree is not fully filled
     function testTreeProof() public {
-        address[] memory accounts = new address[](N);
+        address[N] memory accounts;
         accounts[0] = 0xAC1c290d321Bb5E7c7FF7A31ED890CbbA9064FB0;
         accounts[1] = 0x71C7656EC7ab88b098defB751B7401B5f6d8976F;
         accounts[2] = 0xAbcD16DD77351f25D599a7Fbe6B77C2bAd643aE6;
         accounts[3] = 0x71C7656EC7ab88b098defB751B7401B5f6d8976F;
 
-        uint256[] memory values = new uint256[](N);
+        uint256[N] memory values;
         values[0] = 100;
         values[1] = 75;
         values[2] = 250;
         values[3] = 50;
 
-        bytes32 leaf1 = tree.hashLeftRight(
-            tree.hasher(),
-            bytes32(uint256(accounts[0])),
-            bytes32(uint256(100))
-        );
-        bytes32 leaf2 = tree.hashLeftRight(
-            tree.hasher(),
-            bytes32(uint256(accounts[1])),
-            bytes32(uint256(125))
-        );
-        bytes32 leaf3 = tree.hashLeftRight(
-            tree.hasher(),
-            bytes32(uint256(accounts[2])),
-            bytes32(uint256(250))
-        );
-        bytes32 leaf4 = tree.hashLeftRight(
-            tree.hasher(),
-            bytes32(uint256(accounts[3])),
-            bytes32(uint256(0))
-        );
-        bytes32 left = tree.hashLeftRight(tree.hasher(), leaf1, leaf2);
-        bytes32 right = tree.hashLeftRight(tree.hasher(), leaf3, leaf4);
+        uint256[N] memory balances;
+        balances[0] = values[0];
+        balances[1] = values[1] + values[3];
+        balances[2] = values[2];
+
+        bytes32[N] memory leaves;
+        for (uint256 i; i < N; i++) {
+            leaves[i] = tree.hashLeftRight(
+                tree.hasher(),
+                bytes32(uint256(accounts[i])),
+                bytes32(balances[i])
+            );
+        }
+        bytes32 left = tree.hashLeftRight(tree.hasher(), leaves[0], leaves[1]);
+        bytes32 right = tree.hashLeftRight(tree.hasher(), leaves[2], leaves[3]);
         uint256 stateRoot = uint256(
             tree.hashLeftRight(tree.hasher(), left, right)
         );
@@ -86,4 +80,14 @@ contract IntegrationTest is Test {
         pubSignals[1] = stateRoot;
         assertTrue(verifier.verifyProof(proof, pubSignals));
     }
+
+    // function testFFI() public {
+    //     string[] memory inputs = new string[](2);
+    //     inputs[0] = "node";
+    //     inputs[1] = "scripts/paths.js";
+
+    //     bytes memory proof = vm.ffi(inputs);
+
+    //     assertEq(proof, "");
+    // }
 }
