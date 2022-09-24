@@ -29,7 +29,7 @@ contract Rollup is MerkleTreeWithHistory {
         _insert(bytes32(leaf));
     }
 
-    function resolve(bytes calldata proof) external payable {
+    function resolve(bytes calldata proof) external {
         uint256[] memory pubSignals = new uint256[](1);
         pubSignals[0] = uint256(getLastRoot());
 
@@ -46,7 +46,7 @@ contract Rollup is MerkleTreeWithHistory {
         uint256 value,
         bytes32[] calldata pathElements,
         bool[] calldata pathIndices
-    ) external payable {
+    ) external {
         require(resolved, "The rollup has not been resolved");
 
         bytes32 leaf = hashLeftRight(
