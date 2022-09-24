@@ -7,7 +7,7 @@ import "../src/Rollup.sol";
 contract RollupTest is Test {
     Rollup public rollup;
     uint32 public constant LEVELS = 2;
-    uint256 public constant RUNS = 2**LEVELS;
+    uint256 public constant N = 2**LEVELS;
 
     function setUp() public {
         bytes
@@ -24,11 +24,11 @@ contract RollupTest is Test {
         rollup = new Rollup(LEVELS, addr);
     }
 
-    function testDepositSingleAccount(uint32[RUNS] calldata values) public {
+    function testDepositSingleAccount(uint32[N] calldata values) public {
         bytes32 root = rollup.roots(0);
         assertEq(root, rollup.zeros(LEVELS - 1));
 
-        for (uint256 i; i < RUNS; i++) {
+        for (uint256 i; i < N; i++) {
             rollup.deposit{value: values[i]}();
 
             assertTrue(rollup.roots(i) != rollup.roots(i + 1));
@@ -37,13 +37,13 @@ contract RollupTest is Test {
 
     // Test that the rollup root is changing with each deposit
     function testDepositMultipleAccount(
-        address[RUNS] calldata senders,
-        uint32[RUNS] calldata values
+        address[N] calldata senders,
+        uint32[N] calldata values
     ) public {
         bytes32 root = rollup.roots(0);
         assertEq(root, rollup.zeros(LEVELS - 1));
 
-        for (uint256 i; i < RUNS; i++) {
+        for (uint256 i; i < N; i++) {
             vm.deal(senders[i], type(uint32).max);
             vm.prank(senders[i]);
             rollup.deposit{value: values[i]}();
@@ -61,12 +61,11 @@ contract RollupTest is Test {
         // Deposit into the rollup
         vm.deal(account, 1000);
         vm.startPrank(account);
-        uint256 n = 2**LEVELS;
-        for (uint256 i; i < n; i++) {
+        for (uint256 i; i < N; i++) {
             rollup.deposit{value: value}();
-        }
 
-        assertEq(account.balance, 1000 - value * n);
+            assertEq(account.balance, 1000 - value * (i + 1));
+        }
 
         // Attempt to withdraw from the rollup before resolution
         bytes32[] memory pathElements = new bytes32[](LEVELS);
@@ -92,12 +91,20 @@ contract RollupTest is Test {
             bytes32(uint256(account)),
             bytes32(value)
         );
+
         pathElements[0] = leaf;
-        pathElements[1] = rollup.hashLeftRight(rollup.hasher(), leaf, leaf);
+        for (uint256 i = 1; i < LEVELS; i++) {
+            pathElements[i] = rollup.hashLeftRight(
+                rollup.hasher(),
+                pathElements[i - 1],
+                pathElements[i - 1]
+            );
+        }
+
         vm.expectCall(account, "");
         rollup.withdraw(account, value, pathElements, pathIndices);
 
         // TODO: you should have to withdraw (value * n) all at once because rollup will track balance
-        assertEq(account.balance, 1000 - value * (n - 1));
+        assertEq(account.balance, 1000 - value * (N - 1));
     }
 }
