@@ -5,9 +5,10 @@ include "./merkleTree.circom";
 template MerkleTreeCheckerFull(levels) {
     var n = 2**levels;
 
+    signal input root;
+    signal input state;
     signal input eventAccounts[n];
     signal input eventValues[n];
-    signal input root;
     signal input pathElementss[n][levels];
     signal input pathIndicess[n][levels];
 
@@ -29,6 +30,8 @@ template MerkleTreeCheckerFull(levels) {
             checkers[i].pathIndices[j] <== pathIndicess[i][j];
         }
     }
+
+    root === state;
 }
 
-component main { public [ root ] } = MerkleTreeCheckerFull(2);
+component main { public [ root, state ] } = MerkleTreeCheckerFull(2);

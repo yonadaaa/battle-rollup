@@ -29,9 +29,10 @@ contract Rollup is MerkleTreeWithHistory {
         _insert(bytes32(leaf));
     }
 
-    function resolve(bytes calldata proof) external {
-        uint256[] memory pubSignals = new uint256[](1);
+    function resolve(bytes32 state, bytes calldata proof) external {
+        uint256[] memory pubSignals = new uint256[](2);
         pubSignals[0] = uint256(getLastRoot());
+        pubSignals[1] = uint256(state);
 
         require(
             verifier.verifyProof(proof, pubSignals),
@@ -81,6 +82,7 @@ contract Rollup is MerkleTreeWithHistory {
             currentLevelHash = hashLeftRight(hasher, left, right);
         }
 
+        // TODO: this should be state
         require(
             currentLevelHash == getLastRoot(),
             "Provided root does not match result"

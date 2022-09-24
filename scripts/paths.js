@@ -48,6 +48,7 @@ getPaths().then(([root, pathElementss, pathIndicess]) => {
     eventAccounts: LEAVES.map((l) => l[0]),
     eventValues: LEAVES.map((l) => l[1]),
     root: root.toString(),
+    state: root.toString(),
     pathElementss,
     pathIndicess,
   };
