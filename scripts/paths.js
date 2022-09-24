@@ -3,19 +3,27 @@ const snarkjs = require("snarkjs");
 const { mimc } = require("./mimc");
 
 const LEVELS = 2;
-// TODO: per the contract, these leaves must be set to the apprioprate zero if needed
-const LEAVES = [
-  [982574409541258509042542689523372698064870854576n, 100],
-  [649562641434947955654834859981556155081347864431n, 100],
-  [649562641434947955654834859981556155081347864431n, 250],
-  [649562641434947955654834859981556155081347864431n, 100],
+const EVENT_ACCOUNTS = [
+  982574409541258509042542689523372698064870854576n,
+  649562641434947955654834859981556155081347864431n,
+  980811066407722879624862203474661508049044519654n,
+  649562641434947955654834859981556155081347864431n,
 ];
+const EVENT_VALUES = [100, 75, 250, 50];
+const LEAVES = [0, 1, 2, 3].map((i) => [EVENT_ACCOUNTS[i], EVENT_VALUES[i]]);
+
+const balances = EVENT_ACCOUNTS.map((z) =>
+  LEAVES.filter((l) => l[0] === z).reduce(
+    (partialSum, l) => partialSum + l[1],
+    0
+  )
+);
 
 const BALANCES = [
-  [982574409541258509042542689523372698064870854576n, 100],
-  [649562641434947955654834859981556155081347864431n, 450],
-  [649562641434947955654834859981556155081347864431n, 0],
-  [649562641434947955654834859981556155081347864431n, 0],
+  [EVENT_ACCOUNTS[0], balances[0]],
+  [EVENT_ACCOUNTS[1], balances[1]],
+  [EVENT_ACCOUNTS[2], balances[2]],
+  [EVENT_ACCOUNTS[1], 0],
 ];
 
 function sleep(ms) {
@@ -33,7 +41,7 @@ const getPathsEvents = async () => {
     hashFunction: mimc.hash,
   });
 
-  const paths = LEAVES.map((l, i) => merkleTree.path(i));
+  const paths = [0, 1, 2, 3].map((i) => merkleTree.path(i));
 
   const pathElementss = paths.map((x) => x.pathElements);
   const pathIndicess = paths.map((x) => x.pathIndices);
@@ -49,7 +57,7 @@ const getPathsState = () => {
     hashFunction: mimc.hash,
   });
 
-  const paths = BALANCES.map((b, i) => merkleTree.path(i));
+  const paths = [0, 1, 2, 3].map((i) => merkleTree.path(i));
 
   const pathElementss = paths.map((x) => x.pathElements);
   const pathIndicess = paths.map((x) => x.pathIndices);
@@ -62,8 +70,8 @@ getPathsEvents().then(([eventRoot, eventPathElementss, eventPathIndicess]) => {
   const input = {
     eventRoot: eventRoot.toString(),
     stateRoot: stateRoot.toString(),
-    eventAccounts: LEAVES.map((l) => l[0]),
-    eventValues: LEAVES.map((l) => l[1]),
+    eventAccounts: EVENT_ACCOUNTS,
+    eventValues: EVENT_VALUES,
     eventPathElementss,
     eventPathIndicess,
     statePathElementss,
