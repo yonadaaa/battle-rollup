@@ -43,14 +43,10 @@ const getPaths = async () => {
   return [merkleTree.root, pathElementss, pathIndicess];
 };
 
-// We need pathElements and indices for all
 getPaths().then(([root, pathElementss, pathIndicess]) => {
-  const hashedLeaves = LEAVES.map(([address, value]) =>
-    mimc.hash(address, value)
-  );
-
   const input = {
-    leaves: hashedLeaves,
+    eventAccounts: LEAVES.map((l) => l[0]),
+    eventValues: LEAVES.map((l) => l[1]),
     root: root.toString(),
     pathElementss,
     pathIndicess,
