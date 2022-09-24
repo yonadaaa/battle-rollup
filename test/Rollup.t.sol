@@ -25,21 +25,9 @@ contract RollupTest is Test {
         stateTree = new MerkleTreeWithHistoryMock(LEVELS, IHasher(addr));
     }
 
-    function testDepositSingleAccount(uint32[N] calldata values) public {
-        bytes32 root = rollup.roots(0);
-        assertEq(root, rollup.zeros(LEVELS - 1));
-
-        for (uint256 i; i < N; i++) {
-            rollup.deposit{value: values[i]}();
-
-            assertTrue(rollup.roots(i) != rollup.roots(i + 1));
-        }
-    }
-
-    function testDepositMultipleAccounts(
-        address[N] calldata senders,
-        uint32[N] calldata values
-    ) public {
+    function testDeposit(address[N] calldata senders, uint32[N] calldata values)
+        public
+    {
         bytes32 root = rollup.roots(0);
         assertEq(root, rollup.zeros(LEVELS - 1));
 
@@ -52,7 +40,7 @@ contract RollupTest is Test {
         }
     }
 
-    function testResolveValidProof() public {
+    function testResolve() public {
         address[N] memory accounts;
         accounts[0] = 0xAC1c290d321Bb5E7c7FF7A31ED890CbbA9064FB0;
         accounts[1] = 0x71C7656EC7ab88b098defB751B7401B5f6d8976F;
