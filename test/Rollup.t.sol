@@ -6,7 +6,7 @@ import "tornado-core/Mocks/MerkleTreeWithHistoryMock.sol";
 import "../src/Rollup.sol";
 
 contract RollupTest is Test {
-    uint32 public constant LEVELS = 2;
+    uint32 public constant LEVELS = 3;
     uint256 public constant N = 2**LEVELS;
 
     Rollup public rollup;
@@ -67,7 +67,7 @@ contract RollupTest is Test {
         }
 
         bytes
-            memory proof = hex"250c664304a51a2a7543574467896b6a0afbb3e79487ebab1e93973f0c6394332e956962adb41a22764051861c9878accc047dd744742a367e72d9728b44f3600e95c09ecd42b6066b589d313756d146652a0125318415fb58e6749d522d326b1e052ccdd0f5241cbcd3dc66d83aae5c42286f3e39aae05c096a23c85f605754038af4ad30fb475721cfcf7add596ae33cb4bd1132d31470811f3c409abde3d00ddffc77cf9996465f67f6475b5b97b98775716196923bb1b1cc05d387b279ff209f005456907f80ee53f6cb4d60aa008f9b4160ea46c8d96b29d04950ab21b92b6565ed89669cadf9cb395e9fa3fd4670a6ca58c82fb089d7535d535beb8e881f148ffd0b80c3f4cae42fe2ca10f655dec016a4f03f83be06d628195c66077301fefb3f4d6eee22b155a1a2a4fb8e54823ec8da85a1f723fc3d6d55c78784b92dcb49fbdcf625b86e0e842c67a675f7e0e126d48cd3caa7a7bb9a15dcdff03005c215690e428dc948366c8d619031d1b3e9a209974102e5938d7c6563df28050c2595f437282c3ecafdf41600d3c65f2ba133e76d78470e8e02b9afa9ebf7902fbb73b8ede41fb2d08d0309499e6fccdf1bcb8a34a7f86b8863ff611191638c0ca04be4687d5e31f1af09a833053537c1d36fb89baab1d3231b37783299fb9e1f8b20ec425afe70fc840704aa73e026d4b52eda429d9ccab8c69dbf798f4e4012f116982207a725964f21f5d848c2de582af9c9803c230703f347c5b20b9a4019db371481841bdd35cf6b19178ff40c2e2dabbcbdae58735c2d8e55fd55c9d4199823637403726f6fc1f9fd869976c199e56c4f10f9a272d1a36b1f517cba19099771fd277aaab40b0ac2fcaa9d8459ec0a72be7ea549198954b565b291a1611dde601623a650e451c81fde9fdbd3f5f6bfc367480e59ddeacf385cac8b404d2c0090cf9760af2558ddd9b022b00692463920c39601a7eee32e8906bbf3e4f706f0f283933beec69c08570c8fa7484f60f579d3e2be0d6b0f43636ff2348774018b000848bc31679b5c042e555e9dbb87bc9a28462b3753db059d4db8f1fec80a59908f710a259fe34eb9412a28b3a56e6da7d5b9fcaca1a86c8507ff841901";
+            memory proof = hex"23c6dca2788338040ccb81d56b493f8ac45678ebb2811c35d8bfac15d99452ff0d2497046bda47d39bd8faecc22818dfbbac90cfcb928cb3fd9c2a67e3f78c3c1615c9944acb697540f83c02c3f61d1a6fc66b1146c6d12697a5e7d3ed4e89410b5828a8a432f6b69ab44c565a93baa665e20538aeb62599b7767ea518d989f60eed6b774762fcbe8d30c5d07638af0ecf41c87272a07bbc6c5585d20ce2ea5a0b4c3bfdbd29502cc019b30a98206c8fbd5d5adfceb246a5b7d2d8b75a068f740cb9887c8a4f15f772379d0f94bde9ed935126e2dde1d7687f2520d2333a1f4f119cd25616c4d9060db1ad13c35e81e4b90947c244d446391ed162c74049a357030fe06bedb10cc0495d1c84ef79a0497145d3b676e01edbd9a5e898cc9cc7ae1281759d4c1663f4acd1418ef61317ff921538b7e60a154905b0bb7f0561dd8b11380b1ddfa3083a2428d299c6422c413d51ad145146e1370eef28d43401657707c6af0a866eb048f226ef479299a46506c844874c29cb3b2f93770000a20c9726072b028333048a81ffd9dc8219e6e6b57a1bbec7a95ce630a6b3eeba4240240231ad834e9989cbadc77e328a8cc8b4eec867abcea7ac7309bbab90d27738b72b1920e010b05ae665e399dce9d60e15c1389383a79838d127480ba3bb05ae9a2ae2d28fd7974b97a2f0569eb079a602da5c64e303aabdda9ddf33cfb0dd7daa1c4567107131852b5f0633831263268d778c233600fb2288001472b7c14ee8552c8ebb0381a9627fc983be238d51ff2b5cb711f2e9c1a6fcc36ec709da3ac45326b652386e0b59b709f1fcb4bef459f281be95c469d6d572b546ba7707a6f315122f2b4f1ab594583cf6448e07400bb2b79e5a32845cbc41aa6007c72b43c4b902ba5f0c0800f50605f233fe7304e561335aa3c942daa03bc9fb05d9dcc768220b999629e0835a45634238b84ab96c43cef36a69423ca2ccec5ba79b9dfef3db2481f8be2e7ffc6c14fcc2f0a6b388d9c8c6f1a82fd58c9a0b26bc8b849c7e071ede8dc900c45184e54cfb547247acf2f33f46e6eaf08c4b54d9175eda737dac2b87b6fee9d60b0d7f64965e7ed0c6de359e236ccd3d05dc0a5e7edc04708bd0";
 
         for (uint256 i; i < N; i++) {
             stateTree.insert(
@@ -134,41 +134,61 @@ contract RollupTest is Test {
             bytes32[] memory pathElements = new bytes32[](LEVELS);
             bool[] memory pathIndices = new bool[](LEVELS);
 
-            uint256 shift = i % 2 == 0 ? i + 1 : i - 1;
+            {
+                uint256 shift = i % 2 == 0 ? i + 1 : i - 1;
 
-            pathElements[0] = stateTree.hashLeftRight(
-                stateTree.hasher(),
-                bytes32(uint256(accounts[shift])),
-                bytes32(balances[shift])
-            );
-
-            MerkleTreeWithHistoryMock temp = new MerkleTreeWithHistoryMock(
-                1,
-                stateTree.hasher()
-            );
-
-            uint256 shift1 = i < 2 ? 2 : 0;
-            uint256 shift2 = i < 2 ? 3 : 1;
-
-            temp.insert(
-                stateTree.hashLeftRight(
+                pathElements[0] = stateTree.hashLeftRight(
                     stateTree.hasher(),
-                    bytes32(uint256(accounts[shift1])),
-                    bytes32(balances[shift1])
-                )
-            );
-            temp.insert(
-                stateTree.hashLeftRight(
-                    stateTree.hasher(),
-                    bytes32(uint256(accounts[shift2])),
-                    bytes32(balances[shift2])
-                )
-            );
+                    bytes32(uint256(accounts[shift])),
+                    bytes32(balances[shift])
+                );
+            }
 
-            pathElements[1] = temp.getLastRoot();
+            {
+                MerkleTreeWithHistoryMock temp = new MerkleTreeWithHistoryMock(
+                    1,
+                    stateTree.hasher()
+                );
+
+                uint256 shift = (i < 4 ? 0 : 4) + (i < 2 ? 2 : 0);
+
+                for (uint256 j; j < 2; j++) {
+                    uint256 mu = shift + (j == 0 ? 0 : 1);
+                    temp.insert(
+                        stateTree.hashLeftRight(
+                            stateTree.hasher(),
+                            bytes32(uint256(accounts[mu])),
+                            bytes32(balances[mu])
+                        )
+                    );
+                }
+
+                pathElements[1] = temp.getLastRoot();
+            }
+
+            {
+                MerkleTreeWithHistoryMock temp = new MerkleTreeWithHistoryMock(
+                    2,
+                    stateTree.hasher()
+                );
+
+                uint256 shift = i < 4 ? 4 : 0;
+                for (uint256 j; j < 4; j++) {
+                    temp.insert(
+                        stateTree.hashLeftRight(
+                            stateTree.hasher(),
+                            bytes32(uint256(accounts[shift + j])),
+                            bytes32(balances[shift + j])
+                        )
+                    );
+                }
+
+                pathElements[2] = temp.getLastRoot();
+            }
 
             pathIndices[0] = i % 2 == 1;
             pathIndices[1] = i >= 2;
+            pathIndices[2] = i >= 4;
 
             vm.expectCall(accounts[i], "");
             rollup.withdraw(

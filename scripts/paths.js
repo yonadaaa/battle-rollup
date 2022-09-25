@@ -2,14 +2,18 @@ const MerkleTree = require("fixed-merkle-tree");
 const snarkjs = require("snarkjs");
 const { mimc } = require("./mimc");
 
-const LEVELS = 2;
+const LEVELS = 3;
 const EVENT_ACCOUNTS = [
   982574409541258509042542689523372698064870854576n,
   649562641434947955654834859981556155081347864431n,
   980811066407722879624862203474661508049044519654n,
   649562641434947955654834859981556155081347864431n,
+  0,
+  0,
+  0,
+  0,
 ];
-const EVENT_VALUES = [100, 75, 250, 50];
+const EVENT_VALUES = [100, 75, 250, 50, 0, 0, 0, 0];
 
 const BALANCES = EVENT_ACCOUNTS.map((a, i) => {
   const index = EVENT_ACCOUNTS.findIndex((e) => e === a);

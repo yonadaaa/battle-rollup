@@ -92,4 +92,4 @@ template MerkleTreeCheckerFull(levels) {
     }
 }
 
-component main { public [ eventRoot, stateRoot ] } = MerkleTreeCheckerFull(2);
+component main { public [ eventRoot, stateRoot ] } = MerkleTreeCheckerFull(3);
