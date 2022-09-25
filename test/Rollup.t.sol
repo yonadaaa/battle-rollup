@@ -57,7 +57,11 @@ contract RollupTest is Test {
         uint256[N] memory balances;
         for (uint256 i; i < N; i++) {
             if (!seen[accounts[i]]) {
-                balances[i] = getBalance(accounts[i], accounts, values);
+                for (uint256 j; j < N; j++) {
+                    if (accounts[i] == accounts[j]) {
+                        balances[i] += values[j];
+                    }
+                }
             }
             seen[accounts[i]] = true;
         }
@@ -75,9 +79,6 @@ contract RollupTest is Test {
             );
         }
 
-        bytes32[] memory pathElements = new bytes32[](LEVELS);
-        bool[] memory pathIndices = new bool[](LEVELS);
-
         // Deposit into the rollup
         for (uint256 i; i < N; i++) {
             vm.deal(accounts[i], values[i]);
@@ -86,8 +87,15 @@ contract RollupTest is Test {
             assertEq(accounts[i].balance, 0);
         }
 
-        // Attempt to withdraw from the rollup before resolution
+        // Attempt to deposit too many times
+        vm.expectRevert("Merkle tree is full. No more leaves can be added");
+        rollup.deposit();
+
+        // Attempt to withdraw before resolution
         for (uint256 i; i < N; i++) {
+            bytes32[] memory pathElements = new bytes32[](LEVELS);
+            bool[] memory pathIndices = new bool[](LEVELS);
+
             vm.expectRevert("The rollup has not been resolved");
             rollup.withdraw(
                 accounts[i],
@@ -101,11 +109,17 @@ contract RollupTest is Test {
         rollup.resolve(stateTree.getLastRoot(), proof);
 
         // Attempt to deposit into the rollup after resolution
-        vm.expectRevert("The rollup has been resolved");
-        rollup.deposit();
+        for (uint256 i; i < N; i++) {
+            vm.prank(accounts[i]);
+            vm.expectRevert("The rollup has been resolved");
+            rollup.deposit();
+        }
 
         // Attempt to withdraw from the rollup without a valid merkle proof
         for (uint256 i; i < N; i++) {
+            bytes32[] memory pathElements = new bytes32[](LEVELS);
+            bool[] memory pathIndices = new bool[](LEVELS);
+
             vm.expectRevert("Provided root does not match result");
             rollup.withdraw(
                 accounts[i],
@@ -116,37 +130,59 @@ contract RollupTest is Test {
         }
 
         // Withdraw from the rollup
-        pathElements[0] = stateTree.hashLeftRight(
-            stateTree.hasher(),
-            bytes32(uint256(accounts[0])),
-            bytes32(balances[0])
-        );
-        MerkleTreeWithHistoryMock temp = new MerkleTreeWithHistoryMock(
-            1,
-            stateTree.hasher()
-        );
-        temp.insert(
-            stateTree.hashLeftRight(
+        for (uint256 i; i < N; i++) {
+            bytes32[] memory pathElements = new bytes32[](LEVELS);
+            bool[] memory pathIndices = new bool[](LEVELS);
+
+            uint256 shift = i % 2 == 0 ? i + 1 : i - 1;
+
+            pathElements[0] = stateTree.hashLeftRight(
                 stateTree.hasher(),
-                bytes32(uint256(accounts[2])),
-                bytes32(balances[2])
-            )
-        );
-        temp.insert(
-            stateTree.hashLeftRight(
-                stateTree.hasher(),
-                bytes32(uint256(accounts[1])),
-                bytes32(balances[3])
-            )
-        );
-        pathElements[1] = temp.getLastRoot();
+                bytes32(uint256(accounts[shift])),
+                bytes32(balances[shift])
+            );
 
-        pathIndices[0] = true;
+            MerkleTreeWithHistoryMock temp = new MerkleTreeWithHistoryMock(
+                1,
+                stateTree.hasher()
+            );
 
-        vm.expectCall(accounts[1], "");
-        rollup.withdraw(accounts[1], balances[1], pathElements, pathIndices);
+            uint256 shift1 = i < 2 ? 2 : 0;
+            uint256 shift2 = i < 2 ? 3 : 1;
 
-        assertEq(accounts[1].balance, balances[1]);
+            temp.insert(
+                stateTree.hashLeftRight(
+                    stateTree.hasher(),
+                    bytes32(uint256(accounts[shift1])),
+                    bytes32(balances[shift1])
+                )
+            );
+            temp.insert(
+                stateTree.hashLeftRight(
+                    stateTree.hasher(),
+                    bytes32(uint256(accounts[shift2])),
+                    bytes32(balances[shift2])
+                )
+            );
+
+            pathElements[1] = temp.getLastRoot();
+
+            if (i % 2 == 1) {
+                pathIndices[0] = true;
+            }
+
+            if (i >= 2) {
+                pathIndices[1] = true;
+            }
+
+            vm.expectCall(accounts[i], "");
+            rollup.withdraw(
+                accounts[i],
+                balances[i],
+                pathElements,
+                pathIndices
+            );
+        }
     }
 
     function getBalance(
