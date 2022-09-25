@@ -66,7 +66,7 @@ template MerkleTreeCheckerFull(levels) {
         eventHashers[i].ins[1] <== eventValues[i];
         eventHashers[i].k <== 0;
 
-        eventCheckers[i] = MerkleTreeChecker(2);
+        eventCheckers[i] = MerkleTreeChecker(levels);
 
         eventCheckers[i].leaf <== eventHashers[i].outs[0];
         eventCheckers[i].root <== eventRoot;
@@ -81,7 +81,7 @@ template MerkleTreeCheckerFull(levels) {
         stateHashers[i].ins[1] <== finalBalances[i];
         stateHashers[i].k <== 0;
 
-        stateCheckers[i] = MerkleTreeChecker(2);
+        stateCheckers[i] = MerkleTreeChecker(levels);
 
         stateCheckers[i].leaf <== stateHashers[i].outs[0];
         stateCheckers[i].root <== stateRoot;
