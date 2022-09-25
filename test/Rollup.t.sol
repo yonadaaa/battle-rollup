@@ -167,13 +167,8 @@ contract RollupTest is Test {
 
             pathElements[1] = temp.getLastRoot();
 
-            if (i % 2 == 1) {
-                pathIndices[0] = true;
-            }
-
-            if (i >= 2) {
-                pathIndices[1] = true;
-            }
+            pathIndices[0] = i % 2 == 1;
+            pathIndices[1] = i >= 2;
 
             vm.expectCall(accounts[i], "");
             rollup.withdraw(
@@ -182,18 +177,6 @@ contract RollupTest is Test {
                 pathElements,
                 pathIndices
             );
-        }
-    }
-
-    function getBalance(
-        address account,
-        address[N] memory accounts,
-        uint256[N] memory values
-    ) private pure returns (uint256 count) {
-        for (uint256 i; i < N; i++) {
-            if (accounts[i] == account) {
-                count += values[i];
-            }
         }
     }
 }
