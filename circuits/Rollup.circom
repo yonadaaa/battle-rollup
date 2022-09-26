@@ -15,7 +15,6 @@ template MerkleTreeCheckerFull(levels) {
     signal input statePathElementss[n][levels];
     signal input statePathIndicess[n][levels];
 
-    signal eventAccountIndices[n];
     signal finalBalances[n];
     signal counts[n][n];
     signal balances[n][n];
@@ -42,7 +41,6 @@ template MerkleTreeCheckerFull(levels) {
 
             counts[i][j] <== counts[i][j-1] + j * isZero[i][j-1].out * isIndex[i][j-1].out;
         }
-        eventAccountIndices[i] <== counts[i][n-1];
     }
 
     for (var i=0; i < n; i++){
@@ -50,7 +48,7 @@ template MerkleTreeCheckerFull(levels) {
         for (var j=0; j < n; j++) {
             isAccount[i][j] = IsEqual();
             isAccount[i][j].in[0] <== i;
-            isAccount[i][j].in[1] <== eventAccountIndices[j];
+            isAccount[i][j].in[1] <== counts[j][n-1];
             
             if (j==0) {
                 balances[i][j] <== isAccount[i][j].out * eventValues[j];

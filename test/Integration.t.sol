@@ -32,54 +32,54 @@ contract IntegrationTest is Test {
         stateTree = new MerkleTreeWithHistoryMock(LEVELS, IHasher(addr));
     }
 
-    function testTreeProof() public {
-        address[N] memory accounts;
-        accounts[0] = 0xAC1c290d321Bb5E7c7FF7A31ED890CbbA9064FB0;
-        accounts[1] = 0x71C7656EC7ab88b098defB751B7401B5f6d8976F;
-        accounts[2] = 0xAbcD16DD77351f25D599a7Fbe6B77C2bAd643aE6;
-        accounts[3] = 0x71C7656EC7ab88b098defB751B7401B5f6d8976F;
+    // function testTreeProof() public {
+    //     address[N] memory accounts;
+    //     accounts[0] = 0xAC1c290d321Bb5E7c7FF7A31ED890CbbA9064FB0;
+    //     accounts[1] = 0x71C7656EC7ab88b098defB751B7401B5f6d8976F;
+    //     accounts[2] = 0xAbcD16DD77351f25D599a7Fbe6B77C2bAd643aE6;
+    //     accounts[3] = 0x71C7656EC7ab88b098defB751B7401B5f6d8976F;
 
-        uint256[N] memory values;
-        values[0] = 100;
-        values[1] = 75;
-        values[2] = 250;
-        values[3] = 50;
+    //     uint256[N] memory values;
+    //     values[0] = 100;
+    //     values[1] = 75;
+    //     values[2] = 250;
+    //     values[3] = 50;
 
-        uint256[N] memory balances;
-        for (uint256 i; i < N; i++) {
-            if (!seen[accounts[i]]) {
-                balances[i] = getBalance(accounts[i], accounts, values);
-            }
-            seen[accounts[i]] = true;
-        }
+    //     uint256[N] memory balances;
+    //     for (uint256 i; i < N; i++) {
+    //         if (!seen[accounts[i]]) {
+    //             balances[i] = getBalance(accounts[i], accounts, values);
+    //         }
+    //         seen[accounts[i]] = true;
+    //     }
 
-        bytes
-            memory proof = hex"23c6dca2788338040ccb81d56b493f8ac45678ebb2811c35d8bfac15d99452ff0d2497046bda47d39bd8faecc22818dfbbac90cfcb928cb3fd9c2a67e3f78c3c1615c9944acb697540f83c02c3f61d1a6fc66b1146c6d12697a5e7d3ed4e89410b5828a8a432f6b69ab44c565a93baa665e20538aeb62599b7767ea518d989f60eed6b774762fcbe8d30c5d07638af0ecf41c87272a07bbc6c5585d20ce2ea5a0b4c3bfdbd29502cc019b30a98206c8fbd5d5adfceb246a5b7d2d8b75a068f740cb9887c8a4f15f772379d0f94bde9ed935126e2dde1d7687f2520d2333a1f4f119cd25616c4d9060db1ad13c35e81e4b90947c244d446391ed162c74049a357030fe06bedb10cc0495d1c84ef79a0497145d3b676e01edbd9a5e898cc9cc7ae1281759d4c1663f4acd1418ef61317ff921538b7e60a154905b0bb7f0561dd8b11380b1ddfa3083a2428d299c6422c413d51ad145146e1370eef28d43401657707c6af0a866eb048f226ef479299a46506c844874c29cb3b2f93770000a20c9726072b028333048a81ffd9dc8219e6e6b57a1bbec7a95ce630a6b3eeba4240240231ad834e9989cbadc77e328a8cc8b4eec867abcea7ac7309bbab90d27738b72b1920e010b05ae665e399dce9d60e15c1389383a79838d127480ba3bb05ae9a2ae2d28fd7974b97a2f0569eb079a602da5c64e303aabdda9ddf33cfb0dd7daa1c4567107131852b5f0633831263268d778c233600fb2288001472b7c14ee8552c8ebb0381a9627fc983be238d51ff2b5cb711f2e9c1a6fcc36ec709da3ac45326b652386e0b59b709f1fcb4bef459f281be95c469d6d572b546ba7707a6f315122f2b4f1ab594583cf6448e07400bb2b79e5a32845cbc41aa6007c72b43c4b902ba5f0c0800f50605f233fe7304e561335aa3c942daa03bc9fb05d9dcc768220b999629e0835a45634238b84ab96c43cef36a69423ca2ccec5ba79b9dfef3db2481f8be2e7ffc6c14fcc2f0a6b388d9c8c6f1a82fd58c9a0b26bc8b849c7e071ede8dc900c45184e54cfb547247acf2f33f46e6eaf08c4b54d9175eda737dac2b87b6fee9d60b0d7f64965e7ed0c6de359e236ccd3d05dc0a5e7edc04708bd0";
+    //     bytes
+    //         memory proof = hex"23c6dca2788338040ccb81d56b493f8ac45678ebb2811c35d8bfac15d99452ff0d2497046bda47d39bd8faecc22818dfbbac90cfcb928cb3fd9c2a67e3f78c3c1615c9944acb697540f83c02c3f61d1a6fc66b1146c6d12697a5e7d3ed4e89410b5828a8a432f6b69ab44c565a93baa665e20538aeb62599b7767ea518d989f60eed6b774762fcbe8d30c5d07638af0ecf41c87272a07bbc6c5585d20ce2ea5a0b4c3bfdbd29502cc019b30a98206c8fbd5d5adfceb246a5b7d2d8b75a068f740cb9887c8a4f15f772379d0f94bde9ed935126e2dde1d7687f2520d2333a1f4f119cd25616c4d9060db1ad13c35e81e4b90947c244d446391ed162c74049a357030fe06bedb10cc0495d1c84ef79a0497145d3b676e01edbd9a5e898cc9cc7ae1281759d4c1663f4acd1418ef61317ff921538b7e60a154905b0bb7f0561dd8b11380b1ddfa3083a2428d299c6422c413d51ad145146e1370eef28d43401657707c6af0a866eb048f226ef479299a46506c844874c29cb3b2f93770000a20c9726072b028333048a81ffd9dc8219e6e6b57a1bbec7a95ce630a6b3eeba4240240231ad834e9989cbadc77e328a8cc8b4eec867abcea7ac7309bbab90d27738b72b1920e010b05ae665e399dce9d60e15c1389383a79838d127480ba3bb05ae9a2ae2d28fd7974b97a2f0569eb079a602da5c64e303aabdda9ddf33cfb0dd7daa1c4567107131852b5f0633831263268d778c233600fb2288001472b7c14ee8552c8ebb0381a9627fc983be238d51ff2b5cb711f2e9c1a6fcc36ec709da3ac45326b652386e0b59b709f1fcb4bef459f281be95c469d6d572b546ba7707a6f315122f2b4f1ab594583cf6448e07400bb2b79e5a32845cbc41aa6007c72b43c4b902ba5f0c0800f50605f233fe7304e561335aa3c942daa03bc9fb05d9dcc768220b999629e0835a45634238b84ab96c43cef36a69423ca2ccec5ba79b9dfef3db2481f8be2e7ffc6c14fcc2f0a6b388d9c8c6f1a82fd58c9a0b26bc8b849c7e071ede8dc900c45184e54cfb547247acf2f33f46e6eaf08c4b54d9175eda737dac2b87b6fee9d60b0d7f64965e7ed0c6de359e236ccd3d05dc0a5e7edc04708bd0";
 
-        for (uint256 i; i < N; i++) {
-            eventsTree.insert(
-                eventsTree.hashLeftRight(
-                    eventsTree.hasher(),
-                    bytes32(uint256(accounts[i])),
-                    bytes32(values[i])
-                )
-            );
+    //     for (uint256 i; i < N; i++) {
+    //         eventsTree.insert(
+    //             eventsTree.hashLeftRight(
+    //                 eventsTree.hasher(),
+    //                 bytes32(uint256(accounts[i])),
+    //                 bytes32(values[i])
+    //             )
+    //         );
 
-            stateTree.insert(
-                stateTree.hashLeftRight(
-                    stateTree.hasher(),
-                    bytes32(uint256(accounts[i])),
-                    bytes32(balances[i])
-                )
-            );
-        }
+    //         stateTree.insert(
+    //             stateTree.hashLeftRight(
+    //                 stateTree.hasher(),
+    //                 bytes32(uint256(accounts[i])),
+    //                 bytes32(balances[i])
+    //             )
+    //         );
+    //     }
 
-        uint256[] memory pubSignals = new uint256[](2);
-        pubSignals[0] = uint256(eventsTree.getLastRoot());
-        pubSignals[1] = uint256(stateTree.getLastRoot());
+    //     uint256[] memory pubSignals = new uint256[](2);
+    //     pubSignals[0] = uint256(eventsTree.getLastRoot());
+    //     pubSignals[1] = uint256(stateTree.getLastRoot());
 
-        assertTrue(verifier.verifyProof(proof, pubSignals));
-    }
+    //     assertTrue(verifier.verifyProof(proof, pubSignals));
+    // }
 
     function getBalance(
         address account,

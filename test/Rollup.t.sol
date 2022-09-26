@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity >=0.7.0;
+pragma abicoder v2;
 
 import "forge-std/Test.sol";
 import "tornado-core/Mocks/MerkleTreeWithHistoryMock.sol";
@@ -41,18 +42,153 @@ contract RollupTest is Test {
         }
     }
 
-    function testResolve() public {
+    function arrayToString(uint256[] memory arr)
+        public
+        returns (string memory out)
+    {
+        out = "[";
+        for (uint256 i; i < arr.length; i++) {
+            out = string(
+                abi.encodePacked(
+                    out,
+                    string(
+                        abi.encodePacked(
+                            '"',
+                            vm.toString(arr[i]),
+                            '"',
+                            i == (arr.length - 1) ? "" : ","
+                        )
+                    )
+                )
+            );
+        }
+        out = string(abi.encodePacked(out, "]"));
+    }
+
+    function arrayToString(uint256[N] memory arr)
+        public
+        returns (string memory out)
+    {
+        out = "[";
+        for (uint256 i; i < N; i++) {
+            out = string(
+                abi.encodePacked(
+                    out,
+                    string(
+                        abi.encodePacked(
+                            '"',
+                            vm.toString(arr[i]),
+                            '"',
+                            i == (N - 1) ? "" : ","
+                        )
+                    )
+                )
+            );
+        }
+        out = string(abi.encodePacked(out, "]"));
+    }
+
+    function arrayToString(address[N] memory arr)
+        public
+        returns (string memory out)
+    {
+        uint256[N] memory arrUInt;
+        for (uint256 i; i < N; i++) {
+            arrUInt[i] = uint256(arr[i]);
+        }
+        return arrayToString(arrUInt);
+    }
+
+    function arrayToString(bytes32[] memory arr)
+        public
+        returns (string memory out)
+    {
+        out = "[";
+        for (uint256 i; i < arr.length; i++) {
+            out = string(
+                abi.encodePacked(
+                    out,
+                    string(
+                        abi.encodePacked(
+                            '"',
+                            vm.toString(uint256(arr[i])),
+                            '"',
+                            i == (arr.length - 1) ? "" : ","
+                        )
+                    )
+                )
+            );
+        }
+        out = string(abi.encodePacked(out, "]"));
+    }
+
+    function arrayToString(bytes32[][N] memory arr)
+        public
+        returns (string memory out)
+    {
+        out = "[";
+        for (uint256 i; i < arr.length; i++) {
+            out = string(
+                abi.encodePacked(
+                    out,
+                    string(
+                        abi.encodePacked(
+                            arrayToString(arr[i]),
+                            i == (arr.length - 1) ? "" : ","
+                        )
+                    )
+                )
+            );
+        }
+        out = string(abi.encodePacked(out, "]"));
+    }
+
+    function arrayToString(bool[] memory arr)
+        public
+        returns (string memory out)
+    {
+        uint256[] memory arrUInt = new uint256[](arr.length);
+        for (uint256 i; i < arr.length; i++) {
+            arrUInt[i] = arr[i] ? 1 : 0;
+        }
+        return arrayToString(arrUInt);
+    }
+
+    function arrayToString(bool[][N] memory arr)
+        public
+        returns (string memory out)
+    {
+        out = "[";
+        for (uint256 i; i < arr.length; i++) {
+            out = string(
+                abi.encodePacked(
+                    out,
+                    string(
+                        abi.encodePacked(
+                            arrayToString(arr[i]),
+                            i == (arr.length - 1) ? "" : ","
+                        )
+                    )
+                )
+            );
+        }
+        out = string(abi.encodePacked(out, "]"));
+    }
+
+    function testResolve(uint256[N] memory values) public {
         address[N] memory accounts;
         accounts[0] = 0xAC1c290d321Bb5E7c7FF7A31ED890CbbA9064FB0;
         accounts[1] = 0x71C7656EC7ab88b098defB751B7401B5f6d8976F;
         accounts[2] = 0xAbcD16DD77351f25D599a7Fbe6B77C2bAd643aE6;
         accounts[3] = 0x71C7656EC7ab88b098defB751B7401B5f6d8976F;
 
-        uint256[N] memory values;
-        values[0] = 100;
-        values[1] = 75;
-        values[2] = 250;
-        values[3] = 50;
+        values[4] = 0;
+        values[5] = 0;
+        values[6] = 0;
+        values[7] = 0;
+        for (uint256 i; i < N; i++) {
+            vm.assume(values[i] < 10000000);
+        }
 
         uint256[N] memory balances;
         for (uint256 i; i < N; i++) {
@@ -102,10 +238,163 @@ contract RollupTest is Test {
             );
         }
 
+        // Write to files for JS testing
+        vm.writeFile(
+            "test/input.json",
+            string(
+                abi.encodePacked(
+                    '{"eventRoot":"',
+                    vm.toString(uint256(rollup.getLastRoot())),
+                    '","stateRoot":"',
+                    vm.toString(uint256(stateTree.getLastRoot())),
+                    '","eventAccounts":',
+                    arrayToString(accounts),
+                    ',"eventValues":',
+                    arrayToString(values)
+                )
+            )
+        );
+
+        {
+            bytes32[][N] memory pathElementss;
+            bool[][N] memory pathIndicess;
+
+            for (uint256 i; i < N; i++) {
+                pathElementss[i] = new bytes32[](LEVELS);
+                pathIndicess[i] = new bool[](LEVELS);
+
+                {
+                    uint256 index = i % 2 == 0 ? i + 1 : i - 1;
+
+                    pathElementss[i][0] = stateTree.hashLeftRight(
+                        stateTree.hasher(),
+                        bytes32(uint256(accounts[index])),
+                        bytes32(balances[index])
+                    );
+                }
+
+                pathIndicess[i][0] = i % 2 == 1;
+
+                for (uint32 levels = 1; levels < LEVELS; levels++) {
+                    uint256 n = 2**levels;
+
+                    MerkleTreeWithHistoryMock temp = new MerkleTreeWithHistoryMock(
+                            levels,
+                            stateTree.hasher()
+                        );
+
+                    for (uint256 j; j < n; j++) {
+                        uint256 index = (levels == 1)
+                            ? ((i < 4 ? 0 : 4) +
+                                (i < 2 ? 2 : 0) +
+                                (j == 0 ? 0 : 1))
+                            : i < 4
+                            ? 4
+                            : j;
+
+                        temp.insert(
+                            stateTree.hashLeftRight(
+                                stateTree.hasher(),
+                                bytes32(uint256(accounts[index])),
+                                bytes32(balances[index])
+                            )
+                        );
+                    }
+
+                    pathElementss[i][levels] = temp.getLastRoot();
+                    pathIndicess[i][levels] = i >= n;
+                }
+            }
+
+            vm.writeLine(
+                "test/input.json",
+                string(
+                    abi.encodePacked(
+                        ',"statePathElementss":',
+                        arrayToString(pathElementss),
+                        ',"statePathIndicess":',
+                        arrayToString(pathIndicess)
+                    )
+                )
+            );
+        }
+
+        {
+            bytes32[][N] memory pathElementss;
+            bool[][N] memory pathIndicess;
+
+            for (uint256 i; i < N; i++) {
+                pathElementss[i] = new bytes32[](LEVELS);
+                pathIndicess[i] = new bool[](LEVELS);
+
+                {
+                    pathElementss[i][0] = stateTree.hashLeftRight(
+                        stateTree.hasher(),
+                        bytes32(uint256(accounts[i % 2 == 0 ? i + 1 : i - 1])),
+                        bytes32(values[i % 2 == 0 ? i + 1 : i - 1])
+                    );
+                }
+
+                pathIndicess[i][0] = i % 2 == 1;
+
+                for (uint32 levels = 1; levels < LEVELS; levels++) {
+                    MerkleTreeWithHistoryMock temp = new MerkleTreeWithHistoryMock(
+                            levels,
+                            stateTree.hasher()
+                        );
+
+                    for (uint256 j; j < 2**levels; j++) {
+                        uint256 index = (levels == 1)
+                            ? ((i < 4 ? 0 : 4) +
+                                (i < 2 ? 2 : 0) +
+                                (j == 0 ? 0 : 1))
+                            : i < 4
+                            ? 4
+                            : j;
+                        temp.insert(
+                            stateTree.hashLeftRight(
+                                stateTree.hasher(),
+                                bytes32(uint256(accounts[index])),
+                                bytes32(values[index])
+                            )
+                        );
+                    }
+
+                    pathElementss[i][levels] = temp.getLastRoot();
+                    pathIndicess[i][levels] = i >= 2**levels;
+                }
+            }
+
+            vm.writeLine(
+                "test/input.json",
+                string(
+                    abi.encodePacked(
+                        ',"eventPathElementss":',
+                        arrayToString(pathElementss),
+                        ',"eventPathIndicess":',
+                        arrayToString(pathIndicess)
+                    )
+                )
+            );
+            vm.writeLine("test/input.json", string(abi.encodePacked("}")));
+        }
+
         // Resolve the rollup
         {
-            bytes
-                memory proof = hex"23c6dca2788338040ccb81d56b493f8ac45678ebb2811c35d8bfac15d99452ff0d2497046bda47d39bd8faecc22818dfbbac90cfcb928cb3fd9c2a67e3f78c3c1615c9944acb697540f83c02c3f61d1a6fc66b1146c6d12697a5e7d3ed4e89410b5828a8a432f6b69ab44c565a93baa665e20538aeb62599b7767ea518d989f60eed6b774762fcbe8d30c5d07638af0ecf41c87272a07bbc6c5585d20ce2ea5a0b4c3bfdbd29502cc019b30a98206c8fbd5d5adfceb246a5b7d2d8b75a068f740cb9887c8a4f15f772379d0f94bde9ed935126e2dde1d7687f2520d2333a1f4f119cd25616c4d9060db1ad13c35e81e4b90947c244d446391ed162c74049a357030fe06bedb10cc0495d1c84ef79a0497145d3b676e01edbd9a5e898cc9cc7ae1281759d4c1663f4acd1418ef61317ff921538b7e60a154905b0bb7f0561dd8b11380b1ddfa3083a2428d299c6422c413d51ad145146e1370eef28d43401657707c6af0a866eb048f226ef479299a46506c844874c29cb3b2f93770000a20c9726072b028333048a81ffd9dc8219e6e6b57a1bbec7a95ce630a6b3eeba4240240231ad834e9989cbadc77e328a8cc8b4eec867abcea7ac7309bbab90d27738b72b1920e010b05ae665e399dce9d60e15c1389383a79838d127480ba3bb05ae9a2ae2d28fd7974b97a2f0569eb079a602da5c64e303aabdda9ddf33cfb0dd7daa1c4567107131852b5f0633831263268d778c233600fb2288001472b7c14ee8552c8ebb0381a9627fc983be238d51ff2b5cb711f2e9c1a6fcc36ec709da3ac45326b652386e0b59b709f1fcb4bef459f281be95c469d6d572b546ba7707a6f315122f2b4f1ab594583cf6448e07400bb2b79e5a32845cbc41aa6007c72b43c4b902ba5f0c0800f50605f233fe7304e561335aa3c942daa03bc9fb05d9dcc768220b999629e0835a45634238b84ab96c43cef36a69423ca2ccec5ba79b9dfef3db2481f8be2e7ffc6c14fcc2f0a6b388d9c8c6f1a82fd58c9a0b26bc8b849c7e071ede8dc900c45184e54cfb547247acf2f33f46e6eaf08c4b54d9175eda737dac2b87b6fee9d60b0d7f64965e7ed0c6de359e236ccd3d05dc0a5e7edc04708bd0";
+            string[] memory inputsP = new string[](8);
+            inputsP[0] = "snarkjs";
+            inputsP[1] = "plonk";
+            inputsP[2] = "fullprove";
+            inputsP[3] = "test/input.json";
+            inputsP[4] = "circuits/Rollup_js/Rollup.wasm";
+            inputsP[5] = "circuits/Rollup.zkey";
+            inputsP[6] = "proof.json";
+            inputsP[7] = " public.json";
+            vm.ffi(inputsP);
+
+            string[] memory inputs = new string[](1);
+            inputs[0] = "./prove.sh";
+            bytes memory proof = vm.ffi(inputs);
 
             rollup.resolve(stateTree.getLastRoot(), proof);
         }
@@ -131,58 +420,78 @@ contract RollupTest is Test {
             );
         }
 
-        // Withdraw from the rollup
+        // Attempt to withdraw from the rollup without a valid merkle proof
         for (uint256 i; i < N; i++) {
             bytes32[] memory pathElements = new bytes32[](LEVELS);
             bool[] memory pathIndices = new bool[](LEVELS);
 
-            {
-                uint256 index = i % 2 == 0 ? i + 1 : i - 1;
-
-                pathElements[0] = stateTree.hashLeftRight(
-                    stateTree.hasher(),
-                    bytes32(uint256(accounts[index])),
-                    bytes32(balances[index])
-                );
-            }
-
-            pathIndices[0] = i % 2 == 1;
-
-            for (uint32 levels = 1; levels < LEVELS; levels++) {
-                uint256 n = 2**levels;
-
-                MerkleTreeWithHistoryMock temp = new MerkleTreeWithHistoryMock(
-                    levels,
-                    stateTree.hasher()
-                );
-
-                for (uint256 j; j < n; j++) {
-                    uint256 index = (levels == 1)
-                        ? ((i < 4 ? 0 : 4) + (i < 2 ? 2 : 0) + (j == 0 ? 0 : 1))
-                        : i < 4
-                        ? 4
-                        : j;
-
-                    temp.insert(
-                        stateTree.hashLeftRight(
-                            stateTree.hasher(),
-                            bytes32(uint256(accounts[index])),
-                            bytes32(balances[index])
-                        )
-                    );
-                }
-
-                pathElements[levels] = temp.getLastRoot();
-                pathIndices[levels] = i >= n;
-            }
-
-            vm.expectCall(accounts[i], "");
+            vm.expectRevert("Provided root does not match result");
             rollup.withdraw(
                 accounts[i],
                 balances[i],
                 pathElements,
                 pathIndices
             );
+        }
+        {
+            bytes32[][N] memory pathElementss;
+            bool[][N] memory pathIndicess;
+
+            // Withdraw from the rollup
+            for (uint256 i; i < N; i++) {
+                pathElementss[i] = new bytes32[](LEVELS);
+                pathIndicess[i] = new bool[](LEVELS);
+
+                {
+                    uint256 index = i % 2 == 0 ? i + 1 : i - 1;
+
+                    pathElementss[i][0] = stateTree.hashLeftRight(
+                        stateTree.hasher(),
+                        bytes32(uint256(accounts[index])),
+                        bytes32(balances[index])
+                    );
+                }
+
+                pathIndicess[i][0] = i % 2 == 1;
+
+                for (uint32 levels = 1; levels < LEVELS; levels++) {
+                    uint256 n = 2**levels;
+
+                    MerkleTreeWithHistoryMock temp = new MerkleTreeWithHistoryMock(
+                            levels,
+                            stateTree.hasher()
+                        );
+
+                    for (uint256 j; j < n; j++) {
+                        uint256 index = (levels == 1)
+                            ? ((i < 4 ? 0 : 4) +
+                                (i < 2 ? 2 : 0) +
+                                (j == 0 ? 0 : 1))
+                            : i < 4
+                            ? 4
+                            : j;
+
+                        temp.insert(
+                            stateTree.hashLeftRight(
+                                stateTree.hasher(),
+                                bytes32(uint256(accounts[index])),
+                                bytes32(balances[index])
+                            )
+                        );
+                    }
+
+                    pathElementss[i][levels] = temp.getLastRoot();
+                    pathIndicess[i][levels] = i >= n;
+                }
+
+                vm.expectCall(accounts[i], "");
+                rollup.withdraw(
+                    accounts[i],
+                    balances[i],
+                    pathElementss[i],
+                    pathIndicess[i]
+                );
+            }
         }
     }
 }
