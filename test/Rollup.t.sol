@@ -240,7 +240,7 @@ contract RollupTest is Test {
 
         // Write to files for JS testing
         vm.writeFile(
-            "test/input.json",
+            "input.json",
             string(
                 abi.encodePacked(
                     '{"eventRoot":"',
@@ -307,7 +307,7 @@ contract RollupTest is Test {
             }
 
             vm.writeLine(
-                "test/input.json",
+                "input.json",
                 string(
                     abi.encodePacked(
                         ',"statePathElementss":',
@@ -366,7 +366,7 @@ contract RollupTest is Test {
             }
 
             vm.writeLine(
-                "test/input.json",
+                "input.json",
                 string(
                     abi.encodePacked(
                         ',"eventPathElementss":',
@@ -376,7 +376,7 @@ contract RollupTest is Test {
                     )
                 )
             );
-            vm.writeLine("test/input.json", string(abi.encodePacked("}")));
+            vm.writeLine("input.json", string(abi.encodePacked("}")));
         }
 
         // Resolve the rollup
@@ -385,11 +385,11 @@ contract RollupTest is Test {
             inputsP[0] = "snarkjs";
             inputsP[1] = "plonk";
             inputsP[2] = "fullprove";
-            inputsP[3] = "test/input.json";
+            inputsP[3] = "input.json";
             inputsP[4] = "circuits/Rollup_js/Rollup.wasm";
             inputsP[5] = "circuits/Rollup.zkey";
             inputsP[6] = "proof.json";
-            inputsP[7] = " public.json";
+            inputsP[7] = "public.json";
             vm.ffi(inputsP);
 
             string[] memory inputs = new string[](1);
