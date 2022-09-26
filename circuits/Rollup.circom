@@ -53,7 +53,7 @@ template MerkleTreeCheckerFull(levels) {
             if (j==0) {
                 balances[i][j] <== isAccount[i][j].out * eventValues[j];
             } else {
-                balances[i][j] <== balances[i][j-1] + isAccount[i][j].out * eventValues[j];
+                balances[i][j] <== isAccount[i][j].out * eventValues[j] + balances[i][j-1];
             }
         }
         finalBalances[i] <== balances[i][n-1];
