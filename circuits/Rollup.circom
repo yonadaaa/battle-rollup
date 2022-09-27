@@ -85,15 +85,21 @@ template RollupValidator(levels) {
 
     for (var i=0; i < n; i++){
         for (var j=0; j < n; j++) {
+            // Are both of these events from the same account?
             sameAccount[i][j] = IsEqual();
             sameAccount[i][j].in[0] <== eventAccounts[i];
             sameAccount[i][j].in[1] <== eventAccounts[j];
             
+            // Is this the first event for this account?
+            // (ensure that we only record the balance for a given account once)
             accountSeen[i][j] = IsZero();
-            accountSeen[i][j].in <== (j > 0 ? accountSeen[i][j-1].in : 0) + (j < i ? sameAccount[i][j].out : 0);
+            accountSeen[i][j].in <== (j > 0 ? accountSeen[i][j-1].in : 0) + (i > j ? sameAccount[i][j].out : 0);
             
             shouldCountBalance[i][j] <== accountSeen[i][j].out * sameAccount[i][j].out;
             
+            // Loop through and total up `froms` balance up until now.
+            // Be careful to stop adding to the accumulator once we pass [j]
+            // If the result of the accum is greater than zero, good to go.
             balances[i][j] <== shouldCountBalance[i][j] * eventValues[j] + (j > 0 ? balances[i][j-1] : 0);
         }
 
