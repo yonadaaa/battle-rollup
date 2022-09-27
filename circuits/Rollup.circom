@@ -69,6 +69,7 @@ template RollupValidator(levels) {
     signal input eventAccounts[n];
     signal input eventValues[n];
 
+    signal accum[n][n];
     signal shouldCountBalance[n][n];
     signal balances[n][n];
 
@@ -77,29 +78,23 @@ template RollupValidator(levels) {
 
     component eventHashers[n];
     component stateHashers[n];
-    component accountSeen[n];
     component sameAccount[n][n];
+    component accountSeen[n][n];
     
     component eventCheck = CheckRoot(levels);
     component stateCheck = CheckRoot(levels);
 
     for (var i=0; i < n; i++){
-        var accum = 0;
         for (var j=0; j < n; j++) {
             sameAccount[i][j] = IsEqual();
             sameAccount[i][j].in[0] <== eventAccounts[i];
             sameAccount[i][j].in[1] <== eventAccounts[j];
             
-            if (j < i) {
-                accum += sameAccount[i][j].out;
-            }
-        }
-
-        accountSeen[i] = IsZero();
-        accountSeen[i].in <== accum;
-
-        for (var j=0; j < n; j++) {
-            shouldCountBalance[i][j] <== accountSeen[i].out * sameAccount[i][j].out;
+            accum[i][j] <== (j > 0 ? accum[i][j-1] : 0) + (j < i ? sameAccount[i][j].out : 0);
+            accountSeen[i][j] = IsZero();
+            accountSeen[i][j].in <== accum[i][j];
+            
+            shouldCountBalance[i][j] <== accountSeen[i][j].out * sameAccount[i][j].out;
             
             balances[i][j] <== shouldCountBalance[i][j] * eventValues[j] + (j > 0 ? balances[i][j-1] : 0);
         }
