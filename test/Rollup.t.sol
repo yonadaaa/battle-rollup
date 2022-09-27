@@ -9,6 +9,7 @@ import "../src/Rollup.sol";
 contract RollupTest is Test {
     uint32 public constant LEVELS = 2;
     uint256 public constant N = 2**LEVELS;
+    uint256 public constant LIFESPAN = 10000;
 
     Rollup public rollup;
     MerkleTreeWithHistoryMock public stateTree;
@@ -22,7 +23,7 @@ contract RollupTest is Test {
             addr := create(0, add(bytecode, 32), mload(bytecode))
         }
 
-        rollup = new Rollup(LEVELS, addr);
+        rollup = new Rollup(LEVELS, addr, block.timestamp + LIFESPAN);
         stateTree = new MerkleTreeWithHistoryMock(LEVELS, IHasher(addr));
     }
 
@@ -39,36 +40,6 @@ contract RollupTest is Test {
 
             assertTrue(rollup.roots(i) != rollup.roots(i + 1));
         }
-    }
-
-    function toString(uint256[N] memory arr)
-        public
-        returns (string memory out)
-    {
-        out = "[";
-        for (uint256 i; i < N; i++) {
-            out = string(
-                abi.encodePacked(
-                    out,
-                    '"',
-                    vm.toString(arr[i]),
-                    '"',
-                    i == (N - 1) ? "" : ","
-                )
-            );
-        }
-        out = string(abi.encodePacked(out, "]"));
-    }
-
-    function toString(address[N] memory arr)
-        public
-        returns (string memory out)
-    {
-        uint256[N] memory arrUInt;
-        for (uint256 i; i < N; i++) {
-            arrUInt[i] = uint256(arr[i]);
-        }
-        return toString(arrUInt);
     }
 
     function testResolve(address[N] memory accounts, uint256[N] memory values)
@@ -137,6 +108,23 @@ contract RollupTest is Test {
             );
         }
 
+        // Attempt to resolve the rollup prematurely
+        {
+            bytes32 root = stateTree.getLastRoot();
+
+            vm.expectRevert("The rollup has not entered the resolution stage");
+            rollup.resolve(root, "");
+        }
+
+        // Attempt to resolve the rollup with an invalid proof
+        {
+            bytes32 root = stateTree.getLastRoot();
+
+            vm.warp(block.timestamp + LIFESPAN + 1000);
+            vm.expectRevert("Proof verification failed");
+            rollup.resolve(root, "");
+        }
+
         // Resolve the rollup
         {
             vm.writeFile(
@@ -167,13 +155,14 @@ contract RollupTest is Test {
             inputs[0] = "./prove.sh";
             bytes memory proof = vm.ffi(inputs);
 
+            vm.warp(block.timestamp + LIFESPAN + 1000);
             rollup.resolve(stateTree.getLastRoot(), proof);
         }
 
         // Attempt to deposit into the rollup after resolution
         for (uint256 i; i < N; i++) {
             vm.prank(accounts[i]);
-            vm.expectRevert("The rollup has been resolved");
+            vm.expectRevert("The rollup has entered the resolution stage");
             rollup.deposit();
         }
 
@@ -243,5 +232,35 @@ contract RollupTest is Test {
                 );
             }
         }
+    }
+
+    function toString(uint256[N] memory arr)
+        public
+        returns (string memory out)
+    {
+        out = "[";
+        for (uint256 i; i < N; i++) {
+            out = string(
+                abi.encodePacked(
+                    out,
+                    '"',
+                    vm.toString(arr[i]),
+                    '"',
+                    i == (N - 1) ? "" : ","
+                )
+            );
+        }
+        out = string(abi.encodePacked(out, "]"));
+    }
+
+    function toString(address[N] memory arr)
+        public
+        returns (string memory out)
+    {
+        uint256[N] memory arrUInt;
+        for (uint256 i; i < N; i++) {
+            arrUInt[i] = uint256(arr[i]);
+        }
+        return toString(arrUInt);
     }
 }

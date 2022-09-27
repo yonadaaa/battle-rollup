@@ -8,15 +8,22 @@ import "./PlonkVerifier.sol";
 contract Rollup is MerkleTreeWithHistory {
     PlonkVerifier private verifier;
     bytes32 private stateRoot;
+    uint256 private expiry;
 
-    constructor(uint32 levels, address hasher)
-        MerkleTreeWithHistory(levels, IHasher(hasher))
-    {
+    constructor(
+        uint32 levels,
+        address hasher,
+        uint256 _expiry
+    ) MerkleTreeWithHistory(levels, IHasher(hasher)) {
         verifier = new PlonkVerifier();
+        expiry = _expiry;
     }
 
     function deposit() external payable {
-        require(stateRoot == "", "The rollup has been resolved");
+        require(
+            block.timestamp < expiry,
+            "The rollup has entered the resolution stage"
+        );
 
         bytes32 leaf = hashLeftRight(
             hasher,
@@ -27,8 +34,12 @@ contract Rollup is MerkleTreeWithHistory {
         _insert(leaf);
     }
 
-    // TODO: add time limit
     function resolve(bytes32 state, bytes calldata proof) external {
+        require(
+            block.timestamp > expiry,
+            "The rollup has not entered the resolution stage"
+        );
+
         uint256[] memory pubSignals = new uint256[](2);
         pubSignals[0] = uint256(getLastRoot());
         pubSignals[1] = uint256(state);
