@@ -1,7 +1,20 @@
 pragma circom 2.0.5;
 
-include "./merkleTree.circom";
 include "../lib/circomlib/circuits/comparators.circom";
+include "../lib/circomlib/circuits/mimcsponge.circom";
+
+// Computes MiMC([left, right])
+template HashLeftRight() {
+    signal input left;
+    signal input right;
+    signal output hash;
+
+    component hasher = MiMCSponge(2, 220, 1);
+    hasher.ins[0] <== left;
+    hasher.ins[1] <== right;
+    hasher.k <== 0;
+    hash <== hasher.outs[0];
+}
 
 // From https://github.com/privacy-scaling-explorations/maci/blob/v1/circuits/circom/trees/incrementalMerkleTree.circom
 template CheckRoot(levels) {
@@ -70,8 +83,6 @@ template RollupValidator(levels) {
     component isAccount[n][n];
 
     for (var i=0; i < n; i++) {
-
-        // TODO: diagonal?
         for (var j=0; j < n; j++) {
             if (j==0) {
                 counts[i][0] <== 0;
@@ -106,23 +117,21 @@ template RollupValidator(levels) {
         }
 
         // Check the event merkle tree
-        eventHashers[i] = MiMCSponge(2, 220, 1);
-        eventHashers[i].ins[0] <== eventAccounts[i];
-        eventHashers[i].ins[1] <== eventValues[i];
-        eventHashers[i].k <== 0;
+        eventHashers[i] = HashLeftRight();
+        eventHashers[i].left <== eventAccounts[i];
+        eventHashers[i].right <== eventValues[i];
 
         // Check the state merkle tree
-        stateHashers[i] = MiMCSponge(2, 220, 1);
-        stateHashers[i].ins[0] <== eventAccounts[i];
-        stateHashers[i].ins[1] <== balances[i][n-1];
-        stateHashers[i].k <== 0;
+        stateHashers[i] = HashLeftRight();
+        stateHashers[i].left <== eventAccounts[i];
+        stateHashers[i].right <== balances[i][n-1];
 
-        eventCheck.leaves[i] <== eventHashers[i].outs[0];
-        stateCheck.leaves[i] <== stateHashers[i].outs[0];
+        eventCheck.leaves[i] <== eventHashers[i].hash;
+        stateCheck.leaves[i] <== stateHashers[i].hash;
     }
 
     eventRoot <== eventCheck.root;
     stateRoot <== stateCheck.root;
 }
 
-component main = RollupValidator(3);
+component main = RollupValidator(2);
