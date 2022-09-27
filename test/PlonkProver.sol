@@ -10,16 +10,20 @@ contract PlonkProver is Script {
     uint256 public constant N = 2**LEVELS;
 
     // TODO: Determine argument types and names from circuit inputs
+    // Maybe treat this as an uint256 array, like the verifier?
     function fullProve(
-        address[N] memory eventAccounts,
+        address[N] memory eventFroms,
+        address[N] memory eventTos,
         uint256[N] memory eventValues
     ) public returns (bytes memory proof) {
         vm.writeFile(
             "input.json",
             string(
                 abi.encodePacked(
-                    '{"eventAccounts":',
-                    toString(eventAccounts),
+                    '{"eventFroms":',
+                    toString(eventFroms),
+                    ',"eventTos":',
+                    toString(eventTos),
                     ',"eventValues":',
                     toString(eventValues),
                     "}"

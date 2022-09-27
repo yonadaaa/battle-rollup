@@ -131,7 +131,9 @@ contract RollupTest is Test {
         {
             PlonkProver prover = new PlonkProver();
 
-            bytes memory proof = prover.fullProve(accounts, values);
+            address[N] memory froms;
+
+            bytes memory proof = prover.fullProve(froms, accounts, values);
 
             rollup.resolve(stateTree.getLastRoot(), proof);
         }
@@ -175,11 +177,10 @@ contract RollupTest is Test {
 
                 pathIndices[0] = i % 2 == 1;
 
-                uint32 levels = 1;
-                uint256 n = 2**levels;
+                uint256 n = 2;
 
                 MerkleTreeWithHistoryMock temp = new MerkleTreeWithHistoryMock(
-                    levels,
+                    1,
                     stateTree.hasher()
                 );
 
@@ -198,7 +199,7 @@ contract RollupTest is Test {
                 }
 
                 pathElements[1] = temp.getLastRoot();
-                pathIndices[levels] = i >= n;
+                pathIndices[1] = i >= n;
 
                 vm.expectCall(accounts[i], "");
                 rollup.withdraw(

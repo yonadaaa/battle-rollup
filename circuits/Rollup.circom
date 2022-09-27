@@ -16,6 +16,23 @@ template HashLeftRight() {
     hash <== hasher.outs[0];
 }
 
+template HashThree() {
+    signal input one;
+    signal input two;
+    signal input three;
+    signal output hash;
+
+    component hasher1 = HashLeftRight();
+    hasher1.left <== one;
+    hasher1.right <== two;
+
+    component hasher2 = HashLeftRight();
+    hasher2.left <== hasher1.hash;
+    hasher2.right <== three;
+
+    hash <== hasher2.hash;
+}
+
 // From https://github.com/privacy-scaling-explorations/maci/blob/v1/circuits/circom/trees/incrementalMerkleTree.circom
 template CheckRoot(levels) {
     // The total number of leaves
@@ -66,7 +83,8 @@ template CheckRoot(levels) {
 template RollupValidator(levels) {
     var n = 2**levels;
 
-    signal input eventAccounts[n];
+    signal input eventFroms[n];
+    signal input eventTos[n];
     signal input eventValues[n];
 
     signal counts[n][n];
@@ -88,8 +106,8 @@ template RollupValidator(levels) {
                 counts[i][0] <== 0;
             } else {
                 isIndex[i][j-1] = IsEqual();
-                isIndex[i][j-1].in[0] <== eventAccounts[i];
-                isIndex[i][j-1].in[1] <== eventAccounts[j];
+                isIndex[i][j-1].in[0] <== eventTos[i];
+                isIndex[i][j-1].in[1] <== eventTos[j];
 
                 isZero[i][j-1] = IsZero();
                 isZero[i][j-1].in <== counts[i][j-1];
@@ -117,13 +135,14 @@ template RollupValidator(levels) {
         }
 
         // Check the event merkle tree
-        eventHashers[i] = HashLeftRight();
-        eventHashers[i].left <== eventAccounts[i];
-        eventHashers[i].right <== eventValues[i];
+        eventHashers[i] = HashThree();
+        eventHashers[i].one <== eventFroms[i];
+        eventHashers[i].two <== eventTos[i];
+        eventHashers[i].three <== eventValues[i];
 
         // Check the state merkle tree
         stateHashers[i] = HashLeftRight();
-        stateHashers[i].left <== eventAccounts[i];
+        stateHashers[i].left <== eventTos[i];
         stateHashers[i].right <== balances[i][n-1];
 
         eventCheck.leaves[i] <== eventHashers[i].hash;

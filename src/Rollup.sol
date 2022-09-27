@@ -19,14 +19,26 @@ contract Rollup is MerkleTreeWithHistory {
         expiry = _expiry;
     }
 
+    function hashThree(
+        IHasher hasher,
+        bytes32 one,
+        bytes32 two,
+        bytes32 three
+    ) public pure returns (bytes32) {
+        bytes32 leaf = hashLeftRight(hasher, one, two);
+
+        return hashLeftRight(hasher, leaf, three);
+    }
+
     function deposit() external payable {
         require(
             block.timestamp < expiry,
             "The rollup has entered the resolution stage"
         );
 
-        bytes32 leaf = hashLeftRight(
+        bytes32 leaf = hashThree(
             hasher,
+            bytes32(uint256(address(0))),
             bytes32(uint256(msg.sender)),
             bytes32(msg.value)
         );
