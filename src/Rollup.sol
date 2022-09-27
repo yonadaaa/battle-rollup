@@ -18,17 +18,16 @@ contract Rollup is MerkleTreeWithHistory {
     function deposit() external payable {
         require(stateRoot == "", "The rollup has been resolved");
 
-        uint256 leaf = uint256(
-            hashLeftRight(
-                hasher,
-                bytes32(uint256(msg.sender)),
-                bytes32(msg.value)
-            )
+        bytes32 leaf = hashLeftRight(
+            hasher,
+            bytes32(uint256(msg.sender)),
+            bytes32(msg.value)
         );
 
-        _insert(bytes32(leaf));
+        _insert(leaf);
     }
 
+    // TODO: add time limit
     function resolve(bytes32 state, bytes calldata proof) external {
         uint256[] memory pubSignals = new uint256[](2);
         pubSignals[0] = uint256(getLastRoot());

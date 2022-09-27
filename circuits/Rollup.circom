@@ -3,11 +3,33 @@ pragma circom 2.0.5;
 include "./merkleTree.circom";
 include "../lib/circomlib/circuits/comparators.circom";
 
-template MerkleTreeCheckerFull(levels) {
+template GetMerkleTreeRoot(levels) {
+    signal input leaf;
+    signal input pathElements[levels];
+    signal input pathIndices[levels];
+
+    signal output root;
+
+    component selectors[levels];
+    component hashers[levels];
+
+    for (var i = 0; i < levels; i++) {
+        selectors[i] = DualMux();
+        selectors[i].in[0] <== i == 0 ? leaf : hashers[i - 1].hash;
+        selectors[i].in[1] <== pathElements[i];
+        selectors[i].s <== pathIndices[i];
+
+        hashers[i] = HashLeftRight();
+        hashers[i].left <== selectors[i].out[0];
+        hashers[i].right <== selectors[i].out[1];
+    }
+
+    root <== hashers[levels - 1].hash;
+}
+
+template RollupValidator(levels) {
     var n = 2**levels;
 
-    signal input eventRoot;
-    signal input stateRoot;
     signal input eventAccounts[n];
     signal input eventValues[n];
     signal input eventPathElementss[n][levels];
@@ -15,9 +37,11 @@ template MerkleTreeCheckerFull(levels) {
     signal input statePathElementss[n][levels];
     signal input statePathIndicess[n][levels];
 
-    signal finalBalances[n];
     signal counts[n][n];
     signal balances[n][n];
+
+    signal output eventRoot;
+    signal output stateRoot;
 
     component eventHashers[n];
     component stateHashers[n];
@@ -29,20 +53,28 @@ template MerkleTreeCheckerFull(levels) {
     component isAccount[n][n];
 
     for (var i=0; i < n; i++) {
-        counts[i][0] <== 0;
 
-        for (var j=1; j < n; j++) {
-            isIndex[i][j-1] = IsEqual();
-            isIndex[i][j-1].in[0] <== eventAccounts[i];
-            isIndex[i][j-1].in[1] <== eventAccounts[j];
+        // TODO: diagonal?
+        for (var j=0; j < n; j++) {
+            if (j==0) {
+                counts[i][0] <== 0;
+            } else {
+                isIndex[i][j-1] = IsEqual();
+                isIndex[i][j-1].in[0] <== eventAccounts[i];
+                isIndex[i][j-1].in[1] <== eventAccounts[j];
 
-            isZero[i][j-1] = IsZero();
-            isZero[i][j-1].in <== counts[i][j-1];
+                isZero[i][j-1] = IsZero();
+                isZero[i][j-1].in <== counts[i][j-1];
 
-            counts[i][j] <== counts[i][j-1] + j * isZero[i][j-1].out * isIndex[i][j-1].out;
+                counts[i][j] <== counts[i][j-1] + j * isZero[i][j-1].out * isIndex[i][j-1].out;
+            }
         }
     }
 
+    component getEventRoot;
+    component getStateRoot;
+
+    // TODO: make a component which checks the whole tree at once
     for (var i=0; i < n; i++){
         // Total up each accounts balance
         for (var j=0; j < n; j++) {
@@ -56,7 +88,6 @@ template MerkleTreeCheckerFull(levels) {
                 balances[i][j] <== isAccount[i][j].out * eventValues[j] + balances[i][j-1];
             }
         }
-        finalBalances[i] <== balances[i][n-1];
 
         // Check the event merkle tree
         eventHashers[i] = MiMCSponge(2, 220, 1);
@@ -64,8 +95,31 @@ template MerkleTreeCheckerFull(levels) {
         eventHashers[i].ins[1] <== eventValues[i];
         eventHashers[i].k <== 0;
 
-        eventCheckers[i] = MerkleTreeChecker(levels);
+        // Check the state merkle tree
+        stateHashers[i] = MiMCSponge(2, 220, 1);
+        stateHashers[i].ins[0] <== eventAccounts[i];
+        stateHashers[i].ins[1] <== balances[i][n-1];
+        stateHashers[i].k <== 0;
 
+        if (i==0){
+            getEventRoot = GetMerkleTreeRoot(levels);
+            getEventRoot.leaf <== eventHashers[i].outs[0];
+            for (var j=0; j < levels; j++){
+                getEventRoot.pathElements[j] <== eventPathElementss[i][j];
+                getEventRoot.pathIndices[j] <== eventPathIndicess[i][j];
+            }
+            eventRoot <== getEventRoot.root;
+
+            getStateRoot = GetMerkleTreeRoot(levels);
+            getStateRoot.leaf <== stateHashers[i].outs[0];
+            for (var j=0; j < levels; j++){
+                getStateRoot.pathElements[j] <== statePathElementss[i][j];
+                getStateRoot.pathIndices[j] <== statePathIndicess[i][j];
+            }
+            stateRoot <== getStateRoot.root;
+        }
+
+        eventCheckers[i] = MerkleTreeChecker(levels);
         eventCheckers[i].leaf <== eventHashers[i].outs[0];
         eventCheckers[i].root <== eventRoot;
         for (var j=0; j < levels; j++){
@@ -73,14 +127,7 @@ template MerkleTreeCheckerFull(levels) {
             eventCheckers[i].pathIndices[j] <== eventPathIndicess[i][j];
         }
 
-        // Check the state merkle tree
-        stateHashers[i] = MiMCSponge(2, 220, 1);
-        stateHashers[i].ins[0] <== eventAccounts[i];
-        stateHashers[i].ins[1] <== finalBalances[i];
-        stateHashers[i].k <== 0;
-
         stateCheckers[i] = MerkleTreeChecker(levels);
-
         stateCheckers[i].leaf <== stateHashers[i].outs[0];
         stateCheckers[i].root <== stateRoot;
         for (var j=0; j < levels; j++){
@@ -90,4 +137,4 @@ template MerkleTreeCheckerFull(levels) {
     }
 }
 
-component main { public [ eventRoot, stateRoot ] } = MerkleTreeCheckerFull(3);
+component main = RollupValidator(3);

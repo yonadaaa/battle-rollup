@@ -42,30 +42,23 @@ contract RollupTest is Test {
         }
     }
 
-    function arrayToString(uint256[] memory arr)
-        public
-        returns (string memory out)
-    {
+    function toString(uint256[] memory arr) public returns (string memory out) {
         out = "[";
         for (uint256 i; i < arr.length; i++) {
             out = string(
                 abi.encodePacked(
                     out,
-                    string(
-                        abi.encodePacked(
-                            '"',
-                            vm.toString(arr[i]),
-                            '"',
-                            i == (arr.length - 1) ? "" : ","
-                        )
-                    )
+                    '"',
+                    vm.toString(arr[i]),
+                    '"',
+                    i == (arr.length - 1) ? "" : ","
                 )
             );
         }
         out = string(abi.encodePacked(out, "]"));
     }
 
-    function arrayToString(uint256[N] memory arr)
+    function toString(uint256[N] memory arr)
         public
         returns (string memory out)
     {
@@ -74,21 +67,17 @@ contract RollupTest is Test {
             out = string(
                 abi.encodePacked(
                     out,
-                    string(
-                        abi.encodePacked(
-                            '"',
-                            vm.toString(arr[i]),
-                            '"',
-                            i == (N - 1) ? "" : ","
-                        )
-                    )
+                    '"',
+                    vm.toString(arr[i]),
+                    '"',
+                    i == (N - 1) ? "" : ","
                 )
             );
         }
         out = string(abi.encodePacked(out, "]"));
     }
 
-    function arrayToString(address[N] memory arr)
+    function toString(address[N] memory arr)
         public
         returns (string memory out)
     {
@@ -96,10 +85,26 @@ contract RollupTest is Test {
         for (uint256 i; i < N; i++) {
             arrUInt[i] = uint256(arr[i]);
         }
-        return arrayToString(arrUInt);
+        return toString(arrUInt);
     }
 
-    function arrayToString(bytes32[] memory arr)
+    function toString(bytes32[] memory arr) public returns (string memory out) {
+        out = "[";
+        for (uint256 i; i < arr.length; i++) {
+            out = string(
+                abi.encodePacked(
+                    out,
+                    '"',
+                    vm.toString(uint256(arr[i])),
+                    '"',
+                    i == (arr.length - 1) ? "" : ","
+                )
+            );
+        }
+        out = string(abi.encodePacked(out, "]"));
+    }
+
+    function toString(bytes32[][N] memory arr)
         public
         returns (string memory out)
     {
@@ -108,79 +113,43 @@ contract RollupTest is Test {
             out = string(
                 abi.encodePacked(
                     out,
-                    string(
-                        abi.encodePacked(
-                            '"',
-                            vm.toString(uint256(arr[i])),
-                            '"',
-                            i == (arr.length - 1) ? "" : ","
-                        )
-                    )
+                    toString(arr[i]),
+                    i == (arr.length - 1) ? "" : ","
                 )
             );
         }
         out = string(abi.encodePacked(out, "]"));
     }
 
-    function arrayToString(bytes32[][N] memory arr)
-        public
-        returns (string memory out)
-    {
-        out = "[";
-        for (uint256 i; i < arr.length; i++) {
-            out = string(
-                abi.encodePacked(
-                    out,
-                    string(
-                        abi.encodePacked(
-                            arrayToString(arr[i]),
-                            i == (arr.length - 1) ? "" : ","
-                        )
-                    )
-                )
-            );
-        }
-        out = string(abi.encodePacked(out, "]"));
-    }
-
-    function arrayToString(bool[] memory arr)
-        public
-        returns (string memory out)
-    {
+    function toString(bool[] memory arr) public returns (string memory out) {
         uint256[] memory arrUInt = new uint256[](arr.length);
         for (uint256 i; i < arr.length; i++) {
             arrUInt[i] = arr[i] ? 1 : 0;
         }
-        return arrayToString(arrUInt);
+        return toString(arrUInt);
     }
 
-    function arrayToString(bool[][N] memory arr)
-        public
-        returns (string memory out)
-    {
+    function toString(bool[][N] memory arr) public returns (string memory out) {
         out = "[";
         for (uint256 i; i < arr.length; i++) {
             out = string(
                 abi.encodePacked(
                     out,
-                    string(
-                        abi.encodePacked(
-                            arrayToString(arr[i]),
-                            i == (arr.length - 1) ? "" : ","
-                        )
-                    )
+                    toString(arr[i]),
+                    i == (arr.length - 1) ? "" : ","
                 )
             );
         }
         out = string(abi.encodePacked(out, "]"));
     }
 
-    function testResolve(uint256[N] memory values) public {
-        address[N] memory accounts;
-        accounts[0] = 0xAC1c290d321Bb5E7c7FF7A31ED890CbbA9064FB0;
-        accounts[1] = 0x71C7656EC7ab88b098defB751B7401B5f6d8976F;
-        accounts[2] = 0xAbcD16DD77351f25D599a7Fbe6B77C2bAd643aE6;
-        accounts[3] = 0x71C7656EC7ab88b098defB751B7401B5f6d8976F;
+    function testResolve(address[N] memory accounts, uint256[N] memory values)
+        public
+    {
+        accounts[4] = 0x0000000000000000000000000000000000000000;
+        accounts[5] = 0x0000000000000000000000000000000000000000;
+        accounts[6] = 0x0000000000000000000000000000000000000000;
+        accounts[7] = 0x0000000000000000000000000000000000000000;
 
         values[4] = 0;
         values[5] = 0;
@@ -243,14 +212,10 @@ contract RollupTest is Test {
             "input.json",
             string(
                 abi.encodePacked(
-                    '{"eventRoot":"',
-                    vm.toString(uint256(rollup.getLastRoot())),
-                    '","stateRoot":"',
-                    vm.toString(uint256(stateTree.getLastRoot())),
-                    '","eventAccounts":',
-                    arrayToString(accounts),
+                    '{"eventAccounts":',
+                    toString(accounts),
                     ',"eventValues":',
-                    arrayToString(values)
+                    toString(values)
                 )
             )
         );
@@ -311,9 +276,9 @@ contract RollupTest is Test {
                 string(
                     abi.encodePacked(
                         ',"statePathElementss":',
-                        arrayToString(pathElementss),
+                        toString(pathElementss),
                         ',"statePathIndicess":',
-                        arrayToString(pathIndicess)
+                        toString(pathIndicess)
                     )
                 )
             );
@@ -370,13 +335,13 @@ contract RollupTest is Test {
                 string(
                     abi.encodePacked(
                         ',"eventPathElementss":',
-                        arrayToString(pathElementss),
+                        toString(pathElementss),
                         ',"eventPathIndicess":',
-                        arrayToString(pathIndicess)
+                        toString(pathIndicess),
+                        "}"
                     )
                 )
             );
-            vm.writeLine("input.json", string(abi.encodePacked("}")));
         }
 
         // Resolve the rollup
@@ -420,24 +385,11 @@ contract RollupTest is Test {
             );
         }
 
-        // Attempt to withdraw from the rollup without a valid merkle proof
-        for (uint256 i; i < N; i++) {
-            bytes32[] memory pathElements = new bytes32[](LEVELS);
-            bool[] memory pathIndices = new bool[](LEVELS);
-
-            vm.expectRevert("Provided root does not match result");
-            rollup.withdraw(
-                accounts[i],
-                balances[i],
-                pathElements,
-                pathIndices
-            );
-        }
+        // Withdraw from the rollup
         {
             bytes32[][N] memory pathElementss;
             bool[][N] memory pathIndicess;
 
-            // Withdraw from the rollup
             for (uint256 i; i < N; i++) {
                 pathElementss[i] = new bytes32[](LEVELS);
                 pathIndicess[i] = new bool[](LEVELS);
