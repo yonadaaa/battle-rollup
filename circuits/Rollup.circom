@@ -69,7 +69,6 @@ template RollupValidator(levels) {
     signal input eventAccounts[n];
     signal input eventValues[n];
 
-    signal accum[n][n];
     signal shouldCountBalance[n][n];
     signal balances[n][n];
 
@@ -90,9 +89,8 @@ template RollupValidator(levels) {
             sameAccount[i][j].in[0] <== eventAccounts[i];
             sameAccount[i][j].in[1] <== eventAccounts[j];
             
-            accum[i][j] <== (j > 0 ? accum[i][j-1] : 0) + (j < i ? sameAccount[i][j].out : 0);
             accountSeen[i][j] = IsZero();
-            accountSeen[i][j].in <== accum[i][j];
+            accountSeen[i][j].in <== (j > 0 ? accountSeen[i][j-1].in : 0) + (j < i ? sameAccount[i][j].out : 0);
             
             shouldCountBalance[i][j] <== accountSeen[i][j].out * sameAccount[i][j].out;
             
