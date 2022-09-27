@@ -93,6 +93,9 @@ template RollupValidator(levels) {
     signal output eventRoot;
     signal output stateRoot;
 
+    component eventCheck = CheckRoot(levels);
+    component stateCheck = CheckRoot(levels);
+
     component eventHashers[n];
     component stateHashers[n];
 
@@ -117,16 +120,19 @@ template RollupValidator(levels) {
         }
     }
 
-    component eventCheck = CheckRoot(levels);
-    component stateCheck = CheckRoot(levels);
-
     for (var i=0; i < n; i++){
         // Total up each accounts balance
         for (var j=0; j < n; j++) {
             isAccount[i][j] = IsEqual();
+            // only add to the balance if we are at the first index for this address
             isAccount[i][j].in[0] <== i;
             isAccount[i][j].in[1] <== counts[j][n-1];
+
+            // In addition, only add to the balance if the from[i] has large enough balance
+            // in which case, we will have to update their balance too. 
             
+            
+
             if (j==0) {
                 balances[i][j] <== isAccount[i][j].out * eventValues[j];
             } else {
