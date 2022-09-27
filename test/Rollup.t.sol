@@ -157,6 +157,10 @@ contract RollupTest is Test {
 
             vm.warp(block.timestamp + LIFESPAN + 1000);
             rollup.resolve(stateTree.getLastRoot(), proof);
+
+            vm.removeFile("input.json");
+            vm.removeFile("proof.json");
+            vm.removeFile("public.json");
         }
 
         // Attempt to deposit into the rollup after resolution
