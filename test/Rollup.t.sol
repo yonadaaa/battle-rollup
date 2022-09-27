@@ -4,6 +4,7 @@ pragma abicoder v2;
 
 import "forge-std/Test.sol";
 import "tornado-core/Mocks/MerkleTreeWithHistoryMock.sol";
+import "./PlonkProver.sol";
 import "../src/Rollup.sol";
 
 contract RollupTest is Test {
@@ -128,7 +129,9 @@ contract RollupTest is Test {
 
         // Resolve the rollup
         {
-            bytes memory proof = fullProve(accounts, values);
+            PlonkProver prover = new PlonkProver();
+
+            bytes memory proof = prover.fullProve(accounts, values);
 
             rollup.resolve(stateTree.getLastRoot(), proof);
         }
@@ -206,74 +209,5 @@ contract RollupTest is Test {
                 );
             }
         }
-    }
-
-    function toString(uint256[N] memory arr)
-        public
-        returns (string memory out)
-    {
-        out = "[";
-        for (uint256 i; i < N; i++) {
-            out = string(
-                abi.encodePacked(
-                    out,
-                    '"',
-                    vm.toString(arr[i]),
-                    '"',
-                    i == (N - 1) ? "" : ","
-                )
-            );
-        }
-        out = string(abi.encodePacked(out, "]"));
-    }
-
-    function toString(address[N] memory arr)
-        public
-        returns (string memory out)
-    {
-        uint256[N] memory arrUInt;
-        for (uint256 i; i < N; i++) {
-            arrUInt[i] = uint256(arr[i]);
-        }
-        return toString(arrUInt);
-    }
-
-    function fullProve(address[N] memory accounts, uint256[N] memory values)
-        public
-        returns (bytes memory proof)
-    {
-        vm.writeFile(
-            "input.json",
-            string(
-                abi.encodePacked(
-                    '{"eventAccounts":',
-                    toString(accounts),
-                    ',"eventValues":',
-                    toString(values),
-                    "}"
-                )
-            )
-        );
-
-        string[] memory inputsP = new string[](8);
-        inputsP[0] = "snarkjs";
-        inputsP[1] = "plonk";
-        inputsP[2] = "fullprove";
-        inputsP[3] = "input.json";
-        inputsP[4] = "circuits/Rollup_js/Rollup.wasm";
-        inputsP[5] = "circuits/Rollup.zkey";
-        inputsP[6] = "proof.json";
-        inputsP[7] = "public.json";
-        vm.ffi(inputsP);
-
-        string[] memory inputs = new string[](1);
-        inputs[0] = "./prove.sh";
-        proof = vm.ffi(inputs);
-
-        vm.removeFile("input.json");
-        vm.removeFile("proof.json");
-        vm.removeFile("public.json");
-
-        return proof;
     }
 }
