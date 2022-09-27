@@ -4,23 +4,24 @@ pragma abicoder v2;
 
 import "forge-std/Test.sol";
 
-// TODO: Auto-generate this from circuit
+// TODO: Auto-generate prover contract from a template file, based on circuit inputs
 contract PlonkProver is Script {
     uint32 public constant LEVELS = 2;
     uint256 public constant N = 2**LEVELS;
 
-    function fullProve(address[N] memory accounts, uint256[N] memory values)
-        public
-        returns (bytes memory proof)
-    {
+    // TODO: Determine argument types and names from circuit inputs
+    function fullProve(
+        address[N] memory eventAccounts,
+        uint256[N] memory eventValues
+    ) public returns (bytes memory proof) {
         vm.writeFile(
             "input.json",
             string(
                 abi.encodePacked(
                     '{"eventAccounts":',
-                    toString(accounts),
+                    toString(eventAccounts),
                     ',"eventValues":',
-                    toString(values),
+                    toString(eventValues),
                     "}"
                 )
             )
@@ -31,6 +32,7 @@ contract PlonkProver is Script {
         inputsP[1] = "plonk";
         inputsP[2] = "fullprove";
         inputsP[3] = "input.json";
+        // TODO: fetch filename when users generates prover for circuit
         inputsP[4] = "circuits/Rollup_js/Rollup.wasm";
         inputsP[5] = "circuits/Rollup.zkey";
         inputsP[6] = "proof.json";
