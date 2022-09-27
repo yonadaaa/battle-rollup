@@ -207,145 +207,21 @@ contract RollupTest is Test {
             );
         }
 
-        // Write to files for JS testing
-        vm.writeFile(
-            "input.json",
-            string(
-                abi.encodePacked(
-                    '{"eventAccounts":',
-                    toString(accounts),
-                    ',"eventValues":',
-                    toString(values)
-                )
-            )
-        );
-
+        // Resolve the rollup
         {
-            bytes32[][N] memory pathElementss;
-            bool[][N] memory pathIndicess;
-
-            for (uint256 i; i < N; i++) {
-                pathElementss[i] = new bytes32[](LEVELS);
-                pathIndicess[i] = new bool[](LEVELS);
-
-                {
-                    uint256 index = i % 2 == 0 ? i + 1 : i - 1;
-
-                    pathElementss[i][0] = stateTree.hashLeftRight(
-                        stateTree.hasher(),
-                        bytes32(uint256(accounts[index])),
-                        bytes32(balances[index])
-                    );
-                }
-
-                pathIndicess[i][0] = i % 2 == 1;
-
-                for (uint32 levels = 1; levels < LEVELS; levels++) {
-                    uint256 n = 2**levels;
-
-                    MerkleTreeWithHistoryMock temp = new MerkleTreeWithHistoryMock(
-                            levels,
-                            stateTree.hasher()
-                        );
-
-                    for (uint256 j; j < n; j++) {
-                        uint256 index = (levels == 1)
-                            ? ((i < 4 ? 0 : 4) +
-                                (i < 2 ? 2 : 0) +
-                                (j == 0 ? 0 : 1))
-                            : i < 4
-                            ? 4
-                            : j;
-
-                        temp.insert(
-                            stateTree.hashLeftRight(
-                                stateTree.hasher(),
-                                bytes32(uint256(accounts[index])),
-                                bytes32(balances[index])
-                            )
-                        );
-                    }
-
-                    pathElementss[i][levels] = temp.getLastRoot();
-                    pathIndicess[i][levels] = i >= n;
-                }
-            }
-
-            vm.writeLine(
+            vm.writeFile(
                 "input.json",
                 string(
                     abi.encodePacked(
-                        ',"statePathElementss":',
-                        toString(pathElementss),
-                        ',"statePathIndicess":',
-                        toString(pathIndicess)
-                    )
-                )
-            );
-        }
-
-        {
-            bytes32[][N] memory pathElementss;
-            bool[][N] memory pathIndicess;
-
-            for (uint256 i; i < N; i++) {
-                pathElementss[i] = new bytes32[](LEVELS);
-                pathIndicess[i] = new bool[](LEVELS);
-
-                {
-                    pathElementss[i][0] = stateTree.hashLeftRight(
-                        stateTree.hasher(),
-                        bytes32(uint256(accounts[i % 2 == 0 ? i + 1 : i - 1])),
-                        bytes32(values[i % 2 == 0 ? i + 1 : i - 1])
-                    );
-                }
-
-                pathIndicess[i][0] = i % 2 == 1;
-
-                for (uint32 levels = 1; levels < LEVELS; levels++) {
-                    MerkleTreeWithHistoryMock temp = new MerkleTreeWithHistoryMock(
-                            levels,
-                            stateTree.hasher()
-                        );
-
-                    for (uint256 j; j < 2**levels; j++) {
-                        uint256 index = (levels == 1)
-                            ? ((i < 4 ? 0 : 4) +
-                                (i < 2 ? 2 : 0) +
-                                (j == 0 ? 0 : 1))
-                            : i < 4
-                            ? 4
-                            : j;
-                        temp.insert(
-                            stateTree.hashLeftRight(
-                                stateTree.hasher(),
-                                bytes32(uint256(accounts[index])),
-                                bytes32(values[index])
-                            )
-                        );
-                    }
-
-                    pathElementss[i][levels] = temp.getLastRoot();
-                    pathIndicess[i][levels] = i >= 2**levels;
-                }
-            }
-
-            vm.writeLine(
-                "input.json",
-                string(
-                    abi.encodePacked(
-                        ',"eventPathElementss":',
-                        toString(pathElementss),
-                        ',"eventPathIndicess":',
-                        toString(pathIndicess),
+                        '{"eventAccounts":',
+                        toString(accounts),
+                        ',"eventValues":',
+                        toString(values),
                         "}"
                     )
                 )
             );
-        }
 
-        // Resolve the rollup
-        {
             string[] memory inputsP = new string[](8);
             inputsP[0] = "snarkjs";
             inputsP[1] = "plonk";

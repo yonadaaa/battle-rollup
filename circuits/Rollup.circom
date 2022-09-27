@@ -3,35 +3,51 @@ pragma circom 2.0.5;
 include "./merkleTree.circom";
 include "../lib/circomlib/circuits/comparators.circom";
 
-template MerkleTreeCheckerFull(levels) {
-    var n = 2**levels;
+// From https://github.com/privacy-scaling-explorations/maci/blob/v1/circuits/circom/trees/incrementalMerkleTree.circom
+template CheckRoot(levels) {
+    // The total number of leaves
+    var totalLeaves = 2 ** levels;
 
-    signal input leaves[n];
-    signal input pathElements[n][levels];
-    signal input pathIndices[n][levels];
+    // The number of HashLeftRight components which will be used to hash the
+    // leaves
+    var numLeafHashers = totalLeaves / 2;
 
+    // The number of HashLeftRight components which will be used to hash the
+    // output of the leaf hasher components
+    var numIntermediateHashers = numLeafHashers - 1;
+
+    // Inputs to the snark
+    signal input leaves[totalLeaves];
+
+    // The output
     signal output root;
 
-    component selectors[n][levels];
-    component hashers[n][levels];
+    // The total number of hashers
+    var numHashers = totalLeaves - 1;
+    component hashers[numHashers];
 
-    for (var i = 0; i < n; i++) {
-        for (var j = 0; j < levels; j++) {
-            selectors[i][j] = DualMux();
-            selectors[i][j].in[0] <== j == 0 ? leaves[i] : hashers[i][j - 1].hash;
-            selectors[i][j].in[1] <== pathElements[i][j];
-            selectors[i][j].s <== pathIndices[i][j];
-
-            hashers[i][j] = HashLeftRight();
-            hashers[i][j].left <== selectors[i][j].out[0];
-            hashers[i][j].right <== selectors[i][j].out[1];
-        }
-        if (i > 0) {
-            hashers[i][levels - 1].hash === hashers[i - 1][levels - 1].hash;
-        }
+    // Instantiate all hashers
+    var i;
+    for (i=0; i < numHashers; i++) {
+        hashers[i] = HashLeftRight();
     }
 
-    root <== hashers[n - 1][levels - 1].hash;
+    // Wire the leaf values into the leaf hashers
+    for (i=0; i < numLeafHashers; i++){
+        hashers[i].left <== leaves[i*2];
+        hashers[i].right <== leaves[i*2+1];
+    }
+
+    // Wire the outputs of the leaf hashers to the intermediate hasher inputs
+    var k = 0;
+    for (i=numLeafHashers; i<numLeafHashers + numIntermediateHashers; i++) {
+        hashers[i].left <== hashers[k*2].hash;
+        hashers[i].right <== hashers[k*2+1].hash;
+        k++;
+    }
+
+    // Wire the output of the final hash to this circuit's output
+    root <== hashers[numHashers-1].hash;
 }
 
 template RollupValidator(levels) {
@@ -39,10 +55,6 @@ template RollupValidator(levels) {
 
     signal input eventAccounts[n];
     signal input eventValues[n];
-    signal input eventPathElementss[n][levels];
-    signal input eventPathIndicess[n][levels];
-    signal input statePathElementss[n][levels];
-    signal input statePathIndicess[n][levels];
 
     signal counts[n][n];
     signal balances[n][n];
@@ -52,7 +64,6 @@ template RollupValidator(levels) {
 
     component eventHashers[n];
     component stateHashers[n];
-    component stateCheckers[n];
 
     component isIndex[n][n-1];
     component isZero[n][n-1];
@@ -77,8 +88,8 @@ template RollupValidator(levels) {
         }
     }
 
-    component eventCheck = MerkleTreeCheckerFull(levels);
-    component stateCheck = MerkleTreeCheckerFull(levels);
+    component eventCheck = CheckRoot(levels);
+    component stateCheck = CheckRoot(levels);
 
     for (var i=0; i < n; i++){
         // Total up each accounts balance
@@ -107,16 +118,7 @@ template RollupValidator(levels) {
         stateHashers[i].k <== 0;
 
         eventCheck.leaves[i] <== eventHashers[i].outs[0];
-        for (var j=0; j < levels; j++){
-            eventCheck.pathElements[i][j] <== eventPathElementss[i][j];
-            eventCheck.pathIndices[i][j] <== eventPathIndicess[i][j];
-        }
-
         stateCheck.leaves[i] <== stateHashers[i].outs[0];
-        for (var j=0; j < levels; j++){
-            stateCheck.pathElements[i][j] <== statePathElementss[i][j];
-            stateCheck.pathIndices[i][j] <== statePathIndicess[i][j];
-        }
     }
 
     eventRoot <== eventCheck.root;
