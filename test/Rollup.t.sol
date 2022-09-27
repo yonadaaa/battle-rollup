@@ -12,7 +12,6 @@ contract RollupTest is Test {
 
     Rollup public rollup;
     MerkleTreeWithHistoryMock public stateTree;
-    mapping(address => bool) public seen;
 
     function setUp() public {
         bytes
@@ -80,15 +79,26 @@ contract RollupTest is Test {
         }
 
         uint256[N] memory balances;
-        for (uint256 i; i < N; i++) {
-            if (!seen[accounts[i]]) {
+        {
+            bool[N] memory ignore;
+            for (uint256 i; i < N; i++) {
                 for (uint256 j; j < N; j++) {
-                    if (accounts[i] == accounts[j]) {
-                        balances[i] += values[j];
+                    if (accounts[i] == accounts[j] && i > j) {
+                        ignore[i] = true;
+                        break;
                     }
                 }
             }
-            seen[accounts[i]] = true;
+
+            for (uint256 i; i < N; i++) {
+                if (!ignore[i]) {
+                    for (uint256 j; j < N; j++) {
+                        if (accounts[i] == accounts[j]) {
+                            balances[i] += values[j];
+                        }
+                    }
+                }
+            }
         }
 
         for (uint256 i; i < N; i++) {
