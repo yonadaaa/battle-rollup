@@ -12,9 +12,9 @@ contract Rollup is MerkleTreeWithHistory {
 
     constructor(
         uint32 levels,
-        address hasher,
+        IHasher hasher,
         uint256 _expiry
-    ) MerkleTreeWithHistory(levels, IHasher(hasher)) {
+    ) MerkleTreeWithHistory(levels, hasher) {
         verifier = new PlonkVerifier();
         expiry = _expiry;
     }
