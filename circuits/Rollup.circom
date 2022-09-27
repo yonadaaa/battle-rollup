@@ -87,56 +87,40 @@ template RollupValidator(levels) {
     signal input eventTos[n];
     signal input eventValues[n];
 
-    signal counts[n][n];
+    signal accountSeenAccum[n][n];
+    signal shouldCountBalance[n][n];
     signal balances[n][n];
 
     signal output eventRoot;
     signal output stateRoot;
 
+    component eventHashers[n];
+    component stateHashers[n];
+    component accountSeen[n];
+    component sameAccount[n][n];
+    
     component eventCheck = CheckRoot(levels);
     component stateCheck = CheckRoot(levels);
 
-    component eventHashers[n];
-    component stateHashers[n];
-
-    component isIndex[n][n-1];
-    component isZero[n][n-1];
-    component isAccount[n][n];
-
-    for (var i=0; i < n; i++) {
-        for (var j=0; j < n; j++) {
-            if (j==0) {
-                counts[i][0] <== 0;
-            } else {
-                isIndex[i][j-1] = IsEqual();
-                isIndex[i][j-1].in[0] <== eventTos[i];
-                isIndex[i][j-1].in[1] <== eventTos[j];
-
-                isZero[i][j-1] = IsZero();
-                isZero[i][j-1].in <== counts[i][j-1];
-
-                counts[i][j] <== counts[i][j-1] + j * isZero[i][j-1].out * isIndex[i][j-1].out;
-            }
-        }
-    }
-
     for (var i=0; i < n; i++){
-        // Total up each accounts balance
         for (var j=0; j < n; j++) {
-            isAccount[i][j] = IsEqual();
-            // only add to the balance if we are at the first index for this address
-            isAccount[i][j].in[0] <== i;
-            isAccount[i][j].in[1] <== counts[j][n-1];
-
-            // In addition, only add to the balance if the from[i] has large enough balance
-            // in which case, we will have to update their balance too. 
+            sameAccount[i][j] = IsEqual();
+            sameAccount[i][j].in[0] <== eventTos[i];
+            sameAccount[i][j].in[1] <== eventTos[j];
             
-            
+            accountSeenAccum[i][j] <== (j > 0 ? accountSeenAccum[i][j-1] : 0) + (j < i ? sameAccount[i][j].out : 0);
+        }
 
+        accountSeen[i] = IsZero();
+        accountSeen[i].in <== accountSeenAccum[i][n-1];
+
+        for (var j=0; j < n; j++) {
+            shouldCountBalance[i][j] <== accountSeen[i].out * sameAccount[i][j].out;
+            
             if (j==0) {
-                balances[i][j] <== isAccount[i][j].out * eventValues[j];
+                balances[i][j] <== shouldCountBalance[i][j] * eventValues[j];
             } else {
-                balances[i][j] <== isAccount[i][j].out * eventValues[j] + balances[i][j-1];
+                balances[i][j] <== shouldCountBalance[i][j] * eventValues[j] + balances[i][j-1];
             }
         }
 
