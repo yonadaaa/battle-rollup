@@ -3,28 +3,35 @@ pragma circom 2.0.5;
 include "./merkleTree.circom";
 include "../lib/circomlib/circuits/comparators.circom";
 
-template GetMerkleTreeRoot(levels) {
-    signal input leaf;
-    signal input pathElements[levels];
-    signal input pathIndices[levels];
+template MerkleTreeCheckerFull(levels) {
+    var n = 2**levels;
+
+    signal input leaves[n];
+    signal input pathElements[n][levels];
+    signal input pathIndices[n][levels];
 
     signal output root;
 
-    component selectors[levels];
-    component hashers[levels];
+    component selectors[n][levels];
+    component hashers[n][levels];
 
-    for (var i = 0; i < levels; i++) {
-        selectors[i] = DualMux();
-        selectors[i].in[0] <== i == 0 ? leaf : hashers[i - 1].hash;
-        selectors[i].in[1] <== pathElements[i];
-        selectors[i].s <== pathIndices[i];
+    for (var i = 0; i < n; i++) {
+        for (var j = 0; j < levels; j++) {
+            selectors[i][j] = DualMux();
+            selectors[i][j].in[0] <== j == 0 ? leaves[i] : hashers[i][j - 1].hash;
+            selectors[i][j].in[1] <== pathElements[i][j];
+            selectors[i][j].s <== pathIndices[i][j];
 
-        hashers[i] = HashLeftRight();
-        hashers[i].left <== selectors[i].out[0];
-        hashers[i].right <== selectors[i].out[1];
+            hashers[i][j] = HashLeftRight();
+            hashers[i][j].left <== selectors[i][j].out[0];
+            hashers[i][j].right <== selectors[i][j].out[1];
+        }
+        if (i > 0) {
+            hashers[i][levels - 1].hash === hashers[i - 1][levels - 1].hash;
+        }
     }
 
-    root <== hashers[levels - 1].hash;
+    root <== hashers[n - 1][levels - 1].hash;
 }
 
 template RollupValidator(levels) {
@@ -45,7 +52,6 @@ template RollupValidator(levels) {
 
     component eventHashers[n];
     component stateHashers[n];
-    component eventCheckers[n];
     component stateCheckers[n];
 
     component isIndex[n][n-1];
@@ -71,10 +77,9 @@ template RollupValidator(levels) {
         }
     }
 
-    component getEventRoot;
-    component getStateRoot;
+    component eventCheck = MerkleTreeCheckerFull(levels);
+    component stateCheck = MerkleTreeCheckerFull(levels);
 
-    // TODO: make a component which checks the whole tree at once
     for (var i=0; i < n; i++){
         // Total up each accounts balance
         for (var j=0; j < n; j++) {
@@ -101,40 +106,21 @@ template RollupValidator(levels) {
         stateHashers[i].ins[1] <== balances[i][n-1];
         stateHashers[i].k <== 0;
 
-        if (i==0){
-            getEventRoot = GetMerkleTreeRoot(levels);
-            getEventRoot.leaf <== eventHashers[i].outs[0];
-            for (var j=0; j < levels; j++){
-                getEventRoot.pathElements[j] <== eventPathElementss[i][j];
-                getEventRoot.pathIndices[j] <== eventPathIndicess[i][j];
-            }
-            eventRoot <== getEventRoot.root;
-
-            getStateRoot = GetMerkleTreeRoot(levels);
-            getStateRoot.leaf <== stateHashers[i].outs[0];
-            for (var j=0; j < levels; j++){
-                getStateRoot.pathElements[j] <== statePathElementss[i][j];
-                getStateRoot.pathIndices[j] <== statePathIndicess[i][j];
-            }
-            stateRoot <== getStateRoot.root;
+        eventCheck.leaves[i] <== eventHashers[i].outs[0];
+        for (var j=0; j < levels; j++){
+            eventCheck.pathElements[i][j] <== eventPathElementss[i][j];
+            eventCheck.pathIndices[i][j] <== eventPathIndicess[i][j];
         }
 
-        eventCheckers[i] = MerkleTreeChecker(levels);
-        eventCheckers[i].leaf <== eventHashers[i].outs[0];
-        eventCheckers[i].root <== eventRoot;
+        stateCheck.leaves[i] <== stateHashers[i].outs[0];
         for (var j=0; j < levels; j++){
-            eventCheckers[i].pathElements[j] <== eventPathElementss[i][j];
-            eventCheckers[i].pathIndices[j] <== eventPathIndicess[i][j];
-        }
-
-        stateCheckers[i] = MerkleTreeChecker(levels);
-        stateCheckers[i].leaf <== stateHashers[i].outs[0];
-        stateCheckers[i].root <== stateRoot;
-        for (var j=0; j < levels; j++){
-            stateCheckers[i].pathElements[j] <== statePathElementss[i][j];
-            stateCheckers[i].pathIndices[j] <== statePathIndicess[i][j];
+            stateCheck.pathElements[i][j] <== statePathElementss[i][j];
+            stateCheck.pathIndices[i][j] <== statePathIndicess[i][j];
         }
     }
+
+    eventRoot <== eventCheck.root;
+    stateRoot <== stateCheck.root;
 }
 
 component main = RollupValidator(3);
