@@ -1,4 +1,4 @@
-pragma circom 2.0.5;
+pragma circom 2.0.9;
 
 include "../lib/circomlib/circuits/comparators.circom";
 include "../lib/circomlib/circuits/mimcsponge.circom";
@@ -90,19 +90,7 @@ template RollupValidator(levels) {
             sameAccount[i][j].in[0] <== eventAccounts[i];
             sameAccount[i][j].in[1] <== eventAccounts[j];
             
-            if (j == 0){
-                if (j < i) {
-                    addressSeen[i][j] <== sameAccount[i][j].out;
-                } else {
-                    addressSeen[i][j] <== 0;
-                }            
-            } else {
-                if (j < i) {
-                    addressSeen[i][j] <== addressSeen[i][j-1] + sameAccount[i][j].out;
-                } else {
-                    addressSeen[i][j] <== addressSeen[i][j-1];
-                }
-            }
+            addressSeen[i][j] <== (j > 0 ? addressSeen[i][j-1] : 0) + (j < i ? sameAccount[i][j].out : 0);
         }
 
         accountSeen[i] = IsZero();
