@@ -210,15 +210,17 @@ contract RollupTest is Test {
         tos[0] = 0x804be4d5a1c08d0891617D1F8B5E88b29da73a55;
         tos[1] = 0x32B15ADD718A1cfF009Fe6A92c49aEDC18cECE41;
         tos[2] = 0x804be4d5a1c08d0891617D1F8B5E88b29da73a55;
+        tos[3] = 0x32B15ADD718A1cfF009Fe6A92c49aEDC18cECE41;
 
         uint256[N] memory values;
         values[0] = 50;
         values[1] = 30;
         values[2] = 7;
+        values[3] = 15;
 
         uint256[N] memory balances;
         balances[0] = 27;
-        balances[1] = 30;
+        balances[1] = 45;
 
         for (uint256 i; i < N; i++) {
             vm.deal(tos[i], type(uint32).max);
