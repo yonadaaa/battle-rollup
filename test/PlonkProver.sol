@@ -14,11 +14,14 @@ contract PlonkProver is Script {
         address[N] memory eventAccounts,
         uint256[N] memory eventValues
     ) public returns (bytes memory proof) {
+        address[N] memory eventFroms;
         vm.writeFile(
             "input.json",
             string(
                 abi.encodePacked(
-                    '{"eventAccounts":',
+                    '{"eventFroms":',
+                    toString(eventFroms),
+                    ',"eventTos":',
                     toString(eventAccounts),
                     ',"eventValues":',
                     toString(eventValues),

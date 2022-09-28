@@ -16,6 +16,23 @@ template HashLeftRight() {
     hash <== hasher.outs[0];
 }
 
+template HashThree() {
+    signal input one;
+    signal input two;
+    signal input three;
+    signal output hash;
+
+    component hasher1 = HashLeftRight();
+    hasher1.left <== one;
+    hasher1.right <== two;
+
+    component hasher2 = HashLeftRight();
+    hasher2.left <== hasher1.hash;
+    hasher2.right <== three;
+
+    hash <== hasher2.hash;
+}
+
 // From https://github.com/privacy-scaling-explorations/maci/blob/v1/circuits/circom/trees/incrementalMerkleTree.circom
 template CheckRoot(levels) {
     // The total number of leaves
@@ -66,10 +83,14 @@ template CheckRoot(levels) {
 template RollupValidator(levels) {
     var n = 2**levels;
 
-    signal input eventAccounts[n];
+    signal input eventFroms[n];
+    signal input eventTos[n];
     signal input eventValues[n];
 
+    signal credit[n][n];
+    signal debit[n][n];
     signal shouldIncreaseBalance[n][n];
+    signal shouldDecreaseBalance[n][n];
     signal balances[n][n];
 
     signal output eventRoot;
@@ -78,32 +99,48 @@ template RollupValidator(levels) {
     component eventHashers[n];
     component stateHashers[n];
     component rootHashers[n];
-    component sameAccount[n][n];
-    component accountSeen[n][n];
+    component isTo[n][n];
+    component isFrom[n][n];
+    component toSeen[n][n];
+    component fromSeen[n][n];
     
     component stateCheck = CheckRoot(levels);
 
     for (var i=0; i < n; i++){
         for (var j=0; j < n; j++) {
-            // Check if this event corresponds to this account
-            sameAccount[i][j] = IsEqual();
-            sameAccount[i][j].in[0] <== eventAccounts[i];
-            sameAccount[i][j].in[1] <== eventAccounts[j];
+            // Check if this event corresponds to the `to` account
+            isTo[i][j] = IsEqual();
+            isTo[i][j].in[0] <== eventTos[i];
+            isTo[i][j].in[1] <== eventTos[j];
             
             // Check if this account occurs previously in the array (to prevent recording an accounts balance twice)
-            accountSeen[i][j] = IsZero();
-            accountSeen[i][j].in <== (j > 0 ? accountSeen[i][j-1].in : 0) + (i > j ? sameAccount[i][j].out : 0);
+            toSeen[i][j] = IsZero();
+            toSeen[i][j].in <== (j > 0 ? toSeen[i][j-1].in : 0) + (i > j ? isTo[i][j].out : 0);
             
-            shouldIncreaseBalance[i][j] <== accountSeen[i][j].out * sameAccount[i][j].out;
+            shouldIncreaseBalance[i][j] <== toSeen[i][j].out * isTo[i][j].out;
+            credit[i][j] <== shouldIncreaseBalance[i][j] * eventValues[j];
+
+            // Check if this event corresponds to the `from` account
+            isFrom[i][j] = IsEqual();
+            isFrom[i][j].in[0] <== eventTos[i];
+            isFrom[i][j].in[1] <== eventFroms[j];
             
+            fromSeen[i][j] = IsZero();
+            fromSeen[i][j].in <== (j > 0 ? fromSeen[i][j-1].in : 0) + (i > j ? isFrom[i][j].out : 0);
+            
+            shouldDecreaseBalance[i][j] <== fromSeen[i][j].out * isFrom[i][j].out;
+
+            debit[i][j] <== shouldDecreaseBalance[i][j] * eventValues[j];            
+
             // Update the balance for account `i` at event `j`
-            balances[i][j] <== shouldIncreaseBalance[i][j] * eventValues[j] + (j > 0 ? balances[i][j-1] : 0);
+            balances[i][j] <== (j > 0 ? balances[i][j-1] : 0) + credit[i][j] - debit[i][j];
         }
 
         // Check the event hashes
-        eventHashers[i] = HashLeftRight();
-        eventHashers[i].left <== eventAccounts[i];
-        eventHashers[i].right <== eventValues[i];
+        eventHashers[i] = HashThree();
+        eventHashers[i].one <== eventFroms[i];
+        eventHashers[i].two <== eventTos[i];
+        eventHashers[i].three <== eventValues[i];
 
         rootHashers[i] = HashLeftRight();
         rootHashers[i].left <== i > 0 ? rootHashers[i-1].hash : 0;
@@ -111,7 +148,7 @@ template RollupValidator(levels) {
 
         // Check the state merkle tree
         stateHashers[i] = HashLeftRight();
-        stateHashers[i].left <== eventAccounts[i];
+        stateHashers[i].left <== eventTos[i];
         stateHashers[i].right <== balances[i][n-1];
 
         stateCheck.leaves[i] <== stateHashers[i].hash;
