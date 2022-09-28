@@ -69,7 +69,7 @@ template RollupValidator(levels) {
     signal input eventAccounts[n];
     signal input eventValues[n];
 
-    signal shouldCountBalance[n][n];
+    signal shouldIncreaseBalance[n][n];
     signal balances[n][n];
 
     signal output eventRoot;
@@ -94,9 +94,9 @@ template RollupValidator(levels) {
             accountSeen[i][j] = IsZero();
             accountSeen[i][j].in <== (j > 0 ? accountSeen[i][j-1].in : 0) + (i > j ? sameAccount[i][j].out : 0);
             
-            shouldCountBalance[i][j] <== accountSeen[i][j].out * sameAccount[i][j].out;
+            shouldIncreaseBalance[i][j] <== accountSeen[i][j].out * sameAccount[i][j].out;
             
-            balances[i][j] <== shouldCountBalance[i][j] * eventValues[j] + (j > 0 ? balances[i][j-1] : 0);
+            balances[i][j] <== shouldIncreaseBalance[i][j] * eventValues[j] + (j > 0 ? balances[i][j-1] : 0);
         }
 
         // Check the event merkle tree
