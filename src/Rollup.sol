@@ -12,6 +12,11 @@ contract Rollup is MerkleTreeWithHistory {
     uint256 private total;
     uint256 private expiry;
 
+    event Deposit(address to, uint256 value);
+    event Transfer(address from, bytes32 to, bytes32 value);
+    event Resolve();
+    event Withdraw(address account, uint256 value);
+
     constructor(
         uint256 _expiry,
         uint32 levels,
@@ -21,22 +26,53 @@ contract Rollup is MerkleTreeWithHistory {
         expiry = _expiry;
     }
 
+    function hashThree(
+        IHasher hasher,
+        bytes32 one,
+        bytes32 two,
+        bytes32 three
+    ) public pure returns (bytes32) {
+        return hashLeftRight(hasher, hashLeftRight(hasher, one, two), three);
+    }
+
     function deposit() external payable {
         require(
             block.timestamp < expiry,
             "The rollup has entered the resolution stage"
         );
-
         require(total < 2**levels, "Rollup is full");
 
-        bytes32 leaf = hashLeftRight(
+        bytes32 leaf = hashThree(
             hasher,
+            bytes32(uint256(address(0))),
             bytes32(uint256(msg.sender)),
             bytes32(msg.value)
         );
 
         eventRoot = hashLeftRight(hasher, eventRoot, leaf);
         total++;
+
+        emit Deposit(msg.sender, msg.value);
+    }
+
+    function transfer(bytes32 to, bytes32 value) external payable {
+        require(
+            block.timestamp < expiry,
+            "The rollup has entered the resolution stage"
+        );
+        require(total < 2**levels, "Rollup is full");
+
+        bytes32 leaf = hashThree(
+            hasher,
+            bytes32(uint256(msg.sender)),
+            to,
+            value
+        );
+
+        eventRoot = hashLeftRight(hasher, eventRoot, leaf);
+        total++;
+
+        emit Transfer(msg.sender, to, value);
     }
 
     function resolve(bytes32 state, bytes calldata proof) external {
@@ -55,6 +91,8 @@ contract Rollup is MerkleTreeWithHistory {
         );
 
         stateRoot = state;
+
+        emit Resolve();
     }
 
     function withdraw(
@@ -75,6 +113,8 @@ contract Rollup is MerkleTreeWithHistory {
 
         (bool success, ) = account.call{value: value}("");
         require(success, "Send failed");
+
+        emit Withdraw(account, value);
     }
 
     function checkMerkleTree(
