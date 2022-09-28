@@ -47,23 +47,17 @@ contract RollupTest is Test {
 
         uint256[N] memory balances;
         {
-            bool[N] memory ignore;
             for (uint256 i; i < N; i++) {
+                bool ignore;
                 for (uint256 j; j < N; j++) {
                     if (accounts[i] == accounts[j] && i > j) {
-                        ignore[i] = true;
+                        ignore = true;
                         break;
                     }
                 }
-            }
 
-            for (uint256 i; i < N; i++) {
-                if (!ignore[i]) {
-                    for (uint256 j; j < N; j++) {
-                        if (accounts[i] == accounts[j]) {
-                            balances[i] += values[j];
-                        }
-                    }
+                if (!ignore) {
+                    balances[i] += values[i];
                 }
             }
         }
