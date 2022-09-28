@@ -112,25 +112,23 @@ template RollupValidator(levels) {
             isTo[i][j] = IsEqual();
             isTo[i][j].in[0] <== eventTos[i];
             isTo[i][j].in[1] <== eventTos[j];
-            
-            // Check if this account occurs previously in the array (to prevent recording an accounts balance twice)
-            toSeen[i][j] = IsZero();
-            toSeen[i][j].in <== (j > 0 ? toSeen[i][j-1].in : 0) + (i > j ? isTo[i][j].out : 0);
-            
-            shouldIncreaseBalance[i][j] <== toSeen[i][j].out * isTo[i][j].out;
-            credit[i][j] <== shouldIncreaseBalance[i][j] * eventValues[j];
 
             // Check if this event corresponds to the `from` account
             isFrom[i][j] = IsEqual();
             isFrom[i][j].in[0] <== eventTos[i];
             isFrom[i][j].in[1] <== eventFroms[j];
             
+            // Check if this account occurs previously in the array (to prevent recording an accounts balance twice)
+            toSeen[i][j] = IsZero();
+            toSeen[i][j].in <== (j > 0 ? toSeen[i][j-1].in : 0) + (i > j ? isTo[i][j].out : 0);
             fromSeen[i][j] = IsZero();
             fromSeen[i][j].in <== (j > 0 ? fromSeen[i][j-1].in : 0) + (i > j ? isFrom[i][j].out : 0);
             
+            shouldIncreaseBalance[i][j] <== toSeen[i][j].out * isTo[i][j].out;
             shouldDecreaseBalance[i][j] <== fromSeen[i][j].out * isFrom[i][j].out;
 
-            debit[i][j] <== shouldDecreaseBalance[i][j] * eventValues[j];            
+            credit[i][j] <== shouldIncreaseBalance[i][j] * eventValues[j];
+            debit[i][j] <== shouldDecreaseBalance[i][j] * eventValues[j];        
 
             // Update the balance for account `i` at event `j`
             balances[i][j] <== (j > 0 ? balances[i][j-1] : 0) + credit[i][j] - debit[i][j];
