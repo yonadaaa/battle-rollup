@@ -2,10 +2,16 @@
 pragma solidity >=0.7.0;
 pragma abicoder v2;
 
-import "tornado-core/MerkleTreeWithHistory.sol";
+import {IHasher} from "tornado-core/MerkleTreeWithHistory.sol";
 import "./PlonkVerifier.sol";
 
-contract Rollup is MerkleTreeWithHistory {
+contract Rollup {
+    uint256 public constant FIELD_SIZE =
+        21888242871839275222246405745257275088548364400416034343698204186575808495617;
+    IHasher public immutable hasher;
+
+    uint32 public levels;
+
     PlonkVerifier private verifier;
     bytes32 private eventRoot;
     bytes32 private stateRoot;
@@ -19,20 +25,45 @@ contract Rollup is MerkleTreeWithHistory {
 
     constructor(
         uint256 _expiry,
-        uint32 levels,
-        IHasher hasher
-    ) MerkleTreeWithHistory(levels, hasher) {
+        uint32 _levels,
+        IHasher _hasher
+    ) {
+        hasher = _hasher;
+        levels = _levels;
         verifier = new PlonkVerifier();
         expiry = _expiry;
     }
 
+    /**
+    @dev Hash 2 tree leaves, returns MiMC(_left, _right)
+  */
+    function hashLeftRight(bytes32 _left, bytes32 _right)
+        public
+        view
+        returns (bytes32)
+    {
+        require(
+            uint256(_left) < FIELD_SIZE,
+            "_left should be inside the field"
+        );
+        require(
+            uint256(_right) < FIELD_SIZE,
+            "_right should be inside the field"
+        );
+        uint256 R = uint256(_left);
+        uint256 C = 0;
+        (R, C) = hasher.MiMCSponge(R, C);
+        R = addmod(R, uint256(_right), FIELD_SIZE);
+        (R, C) = hasher.MiMCSponge(R, C);
+        return bytes32(R);
+    }
+
     function hashThree(
-        IHasher hasher,
         bytes32 one,
         bytes32 two,
         bytes32 three
-    ) public pure returns (bytes32) {
-        return hashLeftRight(hasher, hashLeftRight(hasher, one, two), three);
+    ) public view returns (bytes32) {
+        return hashLeftRight(hashLeftRight(one, two), three);
     }
 
     function deposit() external payable {
@@ -43,13 +74,12 @@ contract Rollup is MerkleTreeWithHistory {
         require(total < 2**levels, "Rollup is full");
 
         bytes32 leaf = hashThree(
-            hasher,
             bytes32(uint256(address(0))),
             bytes32(uint256(msg.sender)),
             bytes32(msg.value)
         );
 
-        eventRoot = hashLeftRight(hasher, eventRoot, leaf);
+        eventRoot = hashLeftRight(eventRoot, leaf);
         total++;
 
         emit Deposit(msg.sender, msg.value);
@@ -62,14 +92,9 @@ contract Rollup is MerkleTreeWithHistory {
         );
         require(total < 2**levels, "Rollup is full");
 
-        bytes32 leaf = hashThree(
-            hasher,
-            bytes32(uint256(msg.sender)),
-            to,
-            value
-        );
+        bytes32 leaf = hashThree(bytes32(uint256(msg.sender)), to, value);
 
-        eventRoot = hashLeftRight(hasher, eventRoot, leaf);
+        eventRoot = hashLeftRight(eventRoot, leaf);
         total++;
 
         emit Transfer(msg.sender, to, value);
@@ -103,11 +128,7 @@ contract Rollup is MerkleTreeWithHistory {
     ) external {
         require(stateRoot != "", "The rollup has not been resolved");
 
-        bytes32 leaf = hashLeftRight(
-            hasher,
-            bytes32(uint256(account)),
-            bytes32(value)
-        );
+        bytes32 leaf = hashLeftRight(bytes32(uint256(account)), bytes32(value));
 
         checkMerkleTree(leaf, pathElements, pathIndices);
 
@@ -134,7 +155,7 @@ contract Rollup is MerkleTreeWithHistory {
                 left = currentLevelHash;
                 right = pathElements[i];
             }
-            currentLevelHash = hashLeftRight(hasher, left, right);
+            currentLevelHash = hashLeftRight(left, right);
         }
 
         require(
