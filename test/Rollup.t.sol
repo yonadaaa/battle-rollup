@@ -41,6 +41,8 @@ contract RollupTest is Test {
     function testResolve(address[N] memory accounts, uint256[N] memory values)
         public
     {
+        // Have some fuzzed m, less than 4, that decides how many times to deposit
+
         for (uint256 i; i < N; i++) {
             vm.assume(values[i] < 100 ether);
         }
