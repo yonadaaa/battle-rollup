@@ -11,10 +11,10 @@ contract PlonkProver is Script {
 
     // TODO: Determine argument types and names from circuit inputs
     function fullProve(
-        address[N] memory eventAccounts,
+        address[N] memory eventFroms,
+        address[N] memory eventTos,
         uint256[N] memory eventValues
     ) public returns (bytes memory proof) {
-        address[N] memory eventFroms;
         vm.writeFile(
             "input.json",
             string(
@@ -22,7 +22,7 @@ contract PlonkProver is Script {
                     '{"eventFroms":',
                     toString(eventFroms),
                     ',"eventTos":',
-                    toString(eventAccounts),
+                    toString(eventTos),
                     ',"eventValues":',
                     toString(eventValues),
                     "}"

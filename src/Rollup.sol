@@ -35,7 +35,6 @@ contract Rollup is MerkleTreeWithHistory {
             block.timestamp < expiry,
             "The rollup has entered the resolution stage"
         );
-
         require(total < 2**levels, "Rollup is full");
 
         bytes32 leaf = hashThree(
@@ -43,6 +42,24 @@ contract Rollup is MerkleTreeWithHistory {
             bytes32(uint256(address(0))),
             bytes32(uint256(msg.sender)),
             bytes32(msg.value)
+        );
+
+        eventRoot = hashLeftRight(hasher, eventRoot, leaf);
+        total++;
+    }
+
+    function transfer(bytes32 to, bytes32 value) external payable {
+        require(
+            block.timestamp < expiry,
+            "The rollup has entered the resolution stage"
+        );
+        require(total < 2**levels, "Rollup is full");
+
+        bytes32 leaf = hashThree(
+            hasher,
+            bytes32(uint256(msg.sender)),
+            to,
+            value
         );
 
         eventRoot = hashLeftRight(hasher, eventRoot, leaf);
