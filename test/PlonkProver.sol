@@ -4,7 +4,12 @@ pragma abicoder v2;
 
 import "forge-std/Test.sol";
 
+// TODO: Auto-generate prover contract from a template file, based on circuit inputs
 contract PlonkProver is Script {
+    uint32 public constant LEVELS = 2;
+    uint256 public constant N = 2**LEVELS;
+
+    // TODO: Determine argument types and names from circuit inputs
     function fullProve(
         address[N] memory eventAccounts,
         uint256[N] memory eventValues
