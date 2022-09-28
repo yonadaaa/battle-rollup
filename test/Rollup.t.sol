@@ -24,7 +24,7 @@ contract RollupTest is Test {
             addr := create(0, add(bytecode, 32), mload(bytecode))
         }
 
-        rollup = new Rollup(LEVELS, addr, block.timestamp + LIFESPAN);
+        rollup = new Rollup(block.timestamp + LIFESPAN, LEVELS, addr);
         stateTree = new MerkleTreeWithHistoryMock(LEVELS, addr);
     }
 

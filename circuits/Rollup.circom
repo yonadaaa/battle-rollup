@@ -90,19 +90,24 @@ template RollupValidator(levels) {
             sameAccount[i][j].in[0] <== eventAccounts[i];
             sameAccount[i][j].in[1] <== eventAccounts[j];
             
-            // Check if we have seen this account before (to prevent recording an accounts balance twice)
+            // Check if this account occurs previously in the array (to prevent recording an accounts balance twice)
             accountSeen[i][j] = IsZero();
             accountSeen[i][j].in <== (j > 0 ? accountSeen[i][j-1].in : 0) + (i > j ? sameAccount[i][j].out : 0);
             
             shouldIncreaseBalance[i][j] <== accountSeen[i][j].out * sameAccount[i][j].out;
             
+            // Update the balance for account `i` at event `j`
             balances[i][j] <== shouldIncreaseBalance[i][j] * eventValues[j] + (j > 0 ? balances[i][j-1] : 0);
         }
 
-        // Check the event merkle tree
+        // Check the event hashes
         eventHashers[i] = HashLeftRight();
         eventHashers[i].left <== eventAccounts[i];
         eventHashers[i].right <== eventValues[i];
+
+        rootHashers[i] = HashLeftRight();
+        rootHashers[i].left <== i > 0 ? rootHashers[i-1].hash : 0;
+        rootHashers[i].right <== eventHashers[i].hash;
 
         // Check the state merkle tree
         stateHashers[i] = HashLeftRight();
@@ -110,10 +115,6 @@ template RollupValidator(levels) {
         stateHashers[i].right <== balances[i][n-1];
 
         stateCheck.leaves[i] <== stateHashers[i].hash;
-
-        rootHashers[i] = HashLeftRight();
-        rootHashers[i].left <== i > 0 ? rootHashers[i-1].hash : 0;
-        rootHashers[i].right <== eventHashers[i].hash;
     }
 
     eventRoot <== rootHashers[n-1].hash;

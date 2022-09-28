@@ -21,7 +21,7 @@ contract MyScript is Script {
             addr := create(0, add(bytecode, 32), mload(bytecode))
         }
 
-        new Rollup(LEVELS, addr, block.timestamp + LIFESPAN);
+        new Rollup(block.timestamp + LIFESPAN, LEVELS, addr);
 
         vm.stopBroadcast();
     }
