@@ -31,15 +31,10 @@ contract RollupTest is Test {
     function testDeposit(address[N] calldata senders, uint32[N] calldata values)
         public
     {
-        bytes32 root = rollup.roots(0);
-        assertEq(root, rollup.zeros(LEVELS - 1));
-
         for (uint256 i; i < N; i++) {
             vm.deal(senders[i], type(uint32).max);
             vm.prank(senders[i]);
             rollup.deposit{value: values[i]}();
-
-            assertTrue(rollup.roots(i) != rollup.roots(i + 1));
         }
     }
 
@@ -92,7 +87,7 @@ contract RollupTest is Test {
         }
 
         // Attempt to deposit too many times
-        vm.expectRevert("Merkle tree is full. No more leaves can be added");
+        vm.expectRevert("Rollup is full");
         rollup.deposit();
 
         // Attempt to withdraw before resolution

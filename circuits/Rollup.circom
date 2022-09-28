@@ -77,10 +77,10 @@ template RollupValidator(levels) {
 
     component eventHashers[n];
     component stateHashers[n];
+    component rootHashers[n];
     component sameAccount[n][n];
     component accountSeen[n][n];
     
-    component eventCheck = CheckRoot(levels);
     component stateCheck = CheckRoot(levels);
 
     for (var i=0; i < n; i++){
@@ -109,11 +109,14 @@ template RollupValidator(levels) {
         stateHashers[i].left <== eventAccounts[i];
         stateHashers[i].right <== balances[i][n-1];
 
-        eventCheck.leaves[i] <== eventHashers[i].hash;
         stateCheck.leaves[i] <== stateHashers[i].hash;
+
+        rootHashers[i] = HashLeftRight();
+        rootHashers[i].left <== i > 0 ? rootHashers[i-1].hash : 0;
+        rootHashers[i].right <== eventHashers[i].hash;
     }
 
-    eventRoot <== eventCheck.root;
+    eventRoot <== rootHashers[n-1].hash;
     stateRoot <== stateCheck.root;
 }
 

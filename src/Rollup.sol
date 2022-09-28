@@ -7,7 +7,9 @@ import "./PlonkVerifier.sol";
 
 contract Rollup is MerkleTreeWithHistory {
     PlonkVerifier private verifier;
+    bytes32 private eventRoot;
     bytes32 private stateRoot;
+    uint256 private total;
     uint256 private expiry;
 
     constructor(
@@ -25,13 +27,16 @@ contract Rollup is MerkleTreeWithHistory {
             "The rollup has entered the resolution stage"
         );
 
+        require(total < 2**levels, "Rollup is full");
+
         bytes32 leaf = hashLeftRight(
             hasher,
             bytes32(uint256(msg.sender)),
             bytes32(msg.value)
         );
 
-        _insert(leaf);
+        eventRoot = hashLeftRight(hasher, eventRoot, leaf);
+        total++;
     }
 
     function resolve(bytes32 state, bytes calldata proof) external {
@@ -41,7 +46,7 @@ contract Rollup is MerkleTreeWithHistory {
         );
 
         uint256[] memory pubSignals = new uint256[](2);
-        pubSignals[0] = uint256(getLastRoot());
+        pubSignals[0] = uint256(eventRoot);
         pubSignals[1] = uint256(state);
 
         require(
