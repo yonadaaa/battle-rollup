@@ -149,52 +149,5 @@ contract RollupTest is Test {
             vm.expectRevert("Provided root does not match result");
             rollup.withdraw(tos[i], balances[i], pathElements, pathIndices);
         }
-
-        // Withdraw from the rollup
-        {
-            for (uint256 i; i < N; i++) {
-                bytes32[] memory pathElements = new bytes32[](LEVELS);
-                bool[] memory pathIndices = new bool[](LEVELS);
-
-                {
-                    uint256 index = i % 2 == 0 ? i + 1 : i - 1;
-
-                    pathElements[0] = stateTree.hashLeftRight(
-                        stateTree.hasher(),
-                        bytes32(uint256(tos[index])),
-                        bytes32(balances[index])
-                    );
-                }
-
-                pathIndices[0] = i % 2 == 1;
-
-                uint256 n = 2;
-
-                MerkleTreeWithHistoryMock temp = new MerkleTreeWithHistoryMock(
-                    1,
-                    stateTree.hasher()
-                );
-
-                for (uint256 j; j < n; j++) {
-                    uint256 index = (i < 4 ? 0 : 4) +
-                        (i < 2 ? 2 : 0) +
-                        (j == 0 ? 0 : 1);
-
-                    temp.insert(
-                        stateTree.hashLeftRight(
-                            stateTree.hasher(),
-                            bytes32(uint256(tos[index])),
-                            bytes32(balances[index])
-                        )
-                    );
-                }
-
-                pathElements[1] = temp.getLastRoot();
-                pathIndices[1] = i >= n;
-
-                vm.expectCall(tos[i], "");
-                rollup.withdraw(tos[i], balances[i], pathElements, pathIndices);
-            }
-        }
     }
 }
