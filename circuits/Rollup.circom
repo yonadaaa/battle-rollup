@@ -156,4 +156,4 @@ template RollupValidator(levels) {
     stateRoot <== stateCheck.root;
 }
 
-component main = RollupValidator(2);
+component main = RollupValidator(3);

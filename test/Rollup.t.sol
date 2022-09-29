@@ -4,11 +4,12 @@ pragma abicoder v2;
 
 import "forge-std/Test.sol";
 import "tornado-core/Mocks/MerkleTreeWithHistoryMock.sol";
+import "tornado-core/Mocks/MerkleTreeWithHistoryMock.sol";
 import "./PlonkProver.sol";
 import "../src/Rollup.sol";
 
 contract RollupTest is Test {
-    uint32 public constant LEVELS = 2;
+    uint32 public constant LEVELS = 3;
     uint256 public constant N = 2**LEVELS;
     uint256 public constant LIFESPAN = 10000;
 
