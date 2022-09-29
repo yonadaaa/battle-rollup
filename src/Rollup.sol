@@ -132,8 +132,7 @@ contract Rollup {
 
         checkMerkleTree(leaf, pathElements, pathIndices);
 
-        (bool success, ) = account.call{value: value}("");
-        require(success, "Send failed");
+        account.call{value: value}("");
 
         emit Withdraw(account, value);
     }

@@ -87,10 +87,10 @@ template RollupValidator(levels) {
     signal input eventTos[n];
     signal input eventValues[n];
 
-    signal credit[n][n];
-    signal debit[n][n];
     signal shouldIncreaseBalance[n][n];
     signal shouldDecreaseBalance[n][n];
+    signal credit[n][n];
+    signal debit[n][n];
     signal balances[n][n];
 
     signal output eventRoot;
@@ -128,7 +128,7 @@ template RollupValidator(levels) {
             shouldDecreaseBalance[i][j] <== fromSeen[i][j].out * isFrom[i][j].out;
 
             credit[i][j] <== shouldIncreaseBalance[i][j] * eventValues[j];
-            debit[i][j] <== shouldDecreaseBalance[i][j] * eventValues[j];        
+            debit[i][j] <== shouldDecreaseBalance[i][j] * eventValues[j];       
 
             // Update the balance for account `i` at event `j`
             balances[i][j] <== (j > 0 ? balances[i][j-1] : 0) + credit[i][j] - debit[i][j];

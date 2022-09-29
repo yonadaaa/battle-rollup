@@ -28,58 +28,69 @@ contract RollupTest is Test {
         stateTree = new MerkleTreeWithHistoryMock(LEVELS, addr);
     }
 
-    function testDeposit(address[N] calldata senders, uint32[N] calldata values)
+    function testDeposit(address[N] calldata tos, uint32[N] calldata values)
         public
     {
         for (uint256 i; i < N; i++) {
-            vm.deal(senders[i], type(uint32).max);
-            vm.prank(senders[i]);
+            vm.deal(tos[i], type(uint32).max);
+            vm.prank(tos[i]);
             rollup.deposit{value: values[i]}();
         }
     }
 
-    function testResolve(address[N] memory accounts, uint256[N] memory values)
-        public
-    {
-        // Have some fuzzed m, less than 4, that decides how many times to deposit
-
+    function testRollup(
+        address[N] memory froms,
+        address[N] memory tos,
+        uint256[N] memory values
+    ) public {
         for (uint256 i; i < N; i++) {
             vm.assume(values[i] < 100 ether);
         }
 
         uint256[N] memory balances;
-        {
-            for (uint256 i; i < N; i++) {
-                bool ignore;
-                for (uint256 j; j < N; j++) {
-                    if (accounts[i] == accounts[j] && i > j) {
-                        ignore = true;
-                        break;
-                    }
-                }
+        for (uint256 i = 0; i < N; i++) {
+            vm.deal(tos[i], type(uint32).max);
 
-                if (!ignore) {
-                    balances[i] += values[i];
+            uint256 toSeenCounter;
+            uint256 fromSeenCounter;
+            for (uint256 j = 0; j < N; j++) {
+                // Check if this event corresponds to the `to` account
+                bool isTo = tos[i] == tos[j];
+                bool isFrom = tos[i] == froms[j];
+
+                // Check if this account occurs previously in the array (to prevent recording an accounts balance twice)
+                toSeenCounter += i > j ? (isTo ? 1 : 0) : 0;
+                bool toSeen = toSeenCounter == 0;
+                fromSeenCounter += i > j ? (isFrom ? 1 : 0) : 0;
+                bool fromSeen = fromSeenCounter == 0;
+
+                bool shouldIncreaseBalance = toSeen && isTo;
+                bool shouldDecreaseBalance = fromSeen && isFrom;
+
+                if (shouldIncreaseBalance) {
+                    balances[i] += values[j];
+                }
+                if (shouldDecreaseBalance) {
+                    vm.assume(balances[i] >= values[j]);
+                    balances[i] -= values[j];
                 }
             }
-        }
 
-        for (uint256 i; i < N; i++) {
             stateTree.insert(
                 stateTree.hashLeftRight(
                     stateTree.hasher(),
-                    bytes32(uint256(accounts[i])),
+                    bytes32(uint256(tos[i])),
                     bytes32(balances[i])
                 )
             );
-        }
 
-        // Deposit into the rollup
-        for (uint256 i; i < N; i++) {
-            vm.deal(accounts[i], values[i]);
-            vm.prank(accounts[i]);
-            rollup.deposit{value: values[i]}();
-            assertEq(accounts[i].balance, 0);
+            if (froms[i] == address(0)) {
+                vm.prank(tos[i]);
+                rollup.deposit{value: values[i]}();
+            } else {
+                vm.prank(froms[i]);
+                rollup.transfer(bytes32(uint256(tos[i])), bytes32(values[i]));
+            }
         }
 
         // Attempt to deposit too many times
@@ -92,12 +103,7 @@ contract RollupTest is Test {
             bool[] memory pathIndices = new bool[](LEVELS);
 
             vm.expectRevert("The rollup has not been resolved");
-            rollup.withdraw(
-                accounts[i],
-                balances[i],
-                pathElements,
-                pathIndices
-            );
+            rollup.withdraw(tos[i], balances[i], pathElements, pathIndices);
         }
 
         // Attempt to resolve the rollup prematurely
@@ -108,7 +114,7 @@ contract RollupTest is Test {
             rollup.resolve(root, "");
         }
 
-        vm.warp(block.timestamp + LIFESPAN + 1000);
+        vm.warp(block.timestamp + LIFESPAN + 10);
 
         // Attempt to resolve the rollup with an invalid proof
         {
@@ -122,16 +128,14 @@ contract RollupTest is Test {
         {
             PlonkProver prover = new PlonkProver();
 
-            address[N] memory froms;
-
-            bytes memory proof = prover.fullProve(froms, accounts, values);
+            bytes memory proof = prover.fullProve(froms, tos, values);
 
             rollup.resolve(stateTree.getLastRoot(), proof);
         }
 
         // Attempt to deposit into the rollup after resolution
         for (uint256 i; i < N; i++) {
-            vm.prank(accounts[i]);
+            vm.prank(tos[i]);
             vm.expectRevert("The rollup has entered the resolution stage");
             rollup.deposit();
         }
@@ -142,12 +146,7 @@ contract RollupTest is Test {
             bool[] memory pathIndices = new bool[](LEVELS);
 
             vm.expectRevert("Provided root does not match result");
-            rollup.withdraw(
-                accounts[i],
-                balances[i],
-                pathElements,
-                pathIndices
-            );
+            rollup.withdraw(tos[i], balances[i], pathElements, pathIndices);
         }
 
         // Withdraw from the rollup
@@ -161,18 +160,17 @@ contract RollupTest is Test {
 
                     pathElements[0] = stateTree.hashLeftRight(
                         stateTree.hasher(),
-                        bytes32(uint256(accounts[index])),
+                        bytes32(uint256(tos[index])),
                         bytes32(balances[index])
                     );
                 }
 
                 pathIndices[0] = i % 2 == 1;
 
-                uint32 levels = 1;
-                uint256 n = 2**levels;
+                uint256 n = 2;
 
                 MerkleTreeWithHistoryMock temp = new MerkleTreeWithHistoryMock(
-                    levels,
+                    1,
                     stateTree.hasher()
                 );
 
@@ -184,126 +182,18 @@ contract RollupTest is Test {
                     temp.insert(
                         stateTree.hashLeftRight(
                             stateTree.hasher(),
-                            bytes32(uint256(accounts[index])),
+                            bytes32(uint256(tos[index])),
                             bytes32(balances[index])
                         )
                     );
                 }
 
                 pathElements[1] = temp.getLastRoot();
-                pathIndices[levels] = i >= n;
+                pathIndices[1] = i >= n;
 
-                vm.expectCall(accounts[i], "");
-                rollup.withdraw(
-                    accounts[i],
-                    balances[i],
-                    pathElements,
-                    pathIndices
-                );
+                vm.expectCall(tos[i], "");
+                rollup.withdraw(tos[i], balances[i], pathElements, pathIndices);
             }
         }
     }
-
-    // TODO: Foundry ffi makes multiple proofs fail
-    // function testTransfer() public {
-    //     address[N] memory froms;
-    //     froms[1] = 0x804be4d5a1c08d0891617D1F8B5E88b29da73a55;
-
-    //     address[N] memory tos;
-    //     tos[0] = 0x804be4d5a1c08d0891617D1F8B5E88b29da73a55;
-    //     tos[1] = 0x32B15ADD718A1cfF009Fe6A92c49aEDC18cECE41;
-    //     tos[2] = 0x804be4d5a1c08d0891617D1F8B5E88b29da73a55;
-    //     tos[3] = 0x32B15ADD718A1cfF009Fe6A92c49aEDC18cECE41;
-
-    //     uint256[N] memory values;
-    //     values[0] = 50;
-    //     values[1] = 30;
-    //     values[2] = 7;
-    //     values[3] = 15;
-
-    //     uint256[N] memory balances;
-    //     balances[0] = 27;
-    //     balances[1] = 45;
-
-    //     for (uint256 i; i < N; i++) {
-    //         vm.deal(tos[i], type(uint32).max);
-
-    //         stateTree.insert(
-    //             stateTree.hashLeftRight(
-    //                 stateTree.hasher(),
-    //                 bytes32(uint256(tos[i])),
-    //                 bytes32(balances[i])
-    //             )
-    //         );
-    //     }
-
-    //     for (uint256 i; i < N; i++) {
-    //         if (froms[i] == address(0)) {
-    //             vm.prank(tos[i]);
-    //             rollup.deposit{value: values[i]}();
-    //         } else {
-    //             vm.prank(froms[i]);
-    //             rollup.transfer(bytes32(uint256(tos[i])), bytes32(values[i]));
-    //         }
-    //     }
-
-    //     vm.warp(block.timestamp + LIFESPAN + 1000);
-
-    //     // Resolve the rollup
-    //     {
-    //         PlonkProver prover = new PlonkProver();
-
-    //         bytes memory proof = prover.fullProve(froms, tos, values);
-
-    //         rollup.resolve(stateTree.getLastRoot(), proof);
-    //     }
-
-    //     // Withdraw from the rollup
-    //     {
-    //         for (uint256 i; i < N; i++) {
-    //             bytes32[] memory pathElements = new bytes32[](LEVELS);
-    //             bool[] memory pathIndices = new bool[](LEVELS);
-
-    //             {
-    //                 uint256 index = i % 2 == 0 ? i + 1 : i - 1;
-
-    //                 pathElements[0] = stateTree.hashLeftRight(
-    //                     stateTree.hasher(),
-    //                     bytes32(uint256(tos[index])),
-    //                     bytes32(balances[index])
-    //                 );
-    //             }
-
-    //             pathIndices[0] = i % 2 == 1;
-
-    //             uint32 levels = 1;
-    //             uint256 n = 2**levels;
-
-    //             MerkleTreeWithHistoryMock temp = new MerkleTreeWithHistoryMock(
-    //                 levels,
-    //                 stateTree.hasher()
-    //             );
-
-    //             for (uint256 j; j < n; j++) {
-    //                 uint256 index = (i < 4 ? 0 : 4) +
-    //                     (i < 2 ? 2 : 0) +
-    //                     (j == 0 ? 0 : 1);
-
-    //                 temp.insert(
-    //                     stateTree.hashLeftRight(
-    //                         stateTree.hasher(),
-    //                         bytes32(uint256(tos[index])),
-    //                         bytes32(balances[index])
-    //                     )
-    //                 );
-    //             }
-
-    //             pathElements[1] = temp.getLastRoot();
-    //             pathIndices[levels] = i >= n;
-
-    //             vm.expectCall(tos[i], "");
-    //             rollup.withdraw(tos[i], balances[i], pathElements, pathIndices);
-    //         }
-    //     }
-    // }
 }
