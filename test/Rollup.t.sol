@@ -47,7 +47,7 @@ contract RollupTest is Test {
             vm.assume(values[i] < 100 ether);
         }
 
-        uint256[N] memory balances;
+        uint256[N][N] memory balances;
         for (uint256 i = 0; i < N; i++) {
             vm.deal(tos[i], type(uint32).max);
 
@@ -64,25 +64,38 @@ contract RollupTest is Test {
                 fromSeenCounter += i > j ? (isFrom ? 1 : 0) : 0;
                 bool fromSeen = fromSeenCounter == 0;
 
-                bool shouldIncreaseBalance = toSeen && isTo;
+                uint256 b;
+                for (uint256 k; k <= i; k++) {
+                    bool yeet = froms[j] == tos[k];
+
+                    if (yeet) {
+                        b += j > 0 ? balances[k][j - 1] : 0;
+                    }
+                }
+
+                // Check if `from` has enough balance, is isFrom is zero
+                bool shouldIncreaseBalance = toSeen &&
+                    isTo &&
+                    (froms[j] == address(0) || b >= values[j]);
                 bool shouldDecreaseBalance = fromSeen &&
                     isFrom &&
-                    balances[i] >= values[j];
+                    balances[i][j] >= values[j];
 
                 if (shouldIncreaseBalance) {
-                    balances[i] += values[j];
+                    balances[i][j] += values[j];
                 }
                 if (shouldDecreaseBalance) {
-                    // if balance is not sufficient, don't add here
-                    balances[i] -= values[j];
+                    balances[i][j] -= values[j];
                 }
             }
+
+            assertEq(balances[i][N - 1], 0);
 
             stateTree.insert(
                 stateTree.hashLeftRight(
                     stateTree.hasher(),
                     bytes32(uint256(tos[i])),
-                    bytes32(balances[i])
+                    bytes32(balances[i][N - 1])
                 )
             );
 
@@ -105,7 +118,12 @@ contract RollupTest is Test {
             bool[] memory pathIndices = new bool[](LEVELS);
 
             vm.expectRevert("Provided root does not match result");
-            rollup.withdraw(tos[i], balances[i], pathElements, pathIndices);
+            rollup.withdraw(
+                tos[i],
+                balances[i][N - 1],
+                pathElements,
+                pathIndices
+            );
         }
 
         // Attempt to resolve the rollup prematurely
@@ -155,7 +173,12 @@ contract RollupTest is Test {
             bool[] memory pathIndices = new bool[](LEVELS);
 
             vm.expectRevert("Provided root does not match result");
-            rollup.withdraw(tos[i], balances[i], pathElements, pathIndices);
+            rollup.withdraw(
+                tos[i],
+                balances[i][N - 1],
+                pathElements,
+                pathIndices
+            );
         }
     }
 }

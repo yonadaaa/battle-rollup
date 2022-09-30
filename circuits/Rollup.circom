@@ -1,6 +1,7 @@
 pragma circom 2.0.9;
 
 include "../lib/circomlib/circuits/comparators.circom";
+include "../lib/circomlib/circuits/gates.circom";
 include "../lib/circomlib/circuits/mimcsponge.circom";
 
 // Computes MiMC([left, right])
@@ -87,10 +88,13 @@ template RollupValidator(levels) {
     signal input eventTos[n];
     signal input eventValues[n];
 
+    signal isValidTo[n][n];
+    signal isValidFrom[n][n];
     signal shouldIncreaseBalance[n][n];
     signal shouldDecreaseBalance[n][n];
     signal credit[n][n];
     signal debit[n][n];
+    signal b[n][n][n];
     signal balances[n][n];
 
     signal output eventRoot;
@@ -103,13 +107,17 @@ template RollupValidator(levels) {
     component isFrom[n][n];
     component isFirstTo[n][n];
     component isFirstFrom[n][n];
+    component isFromZero[n][n];
+    component canAffordTo[n][n];
     component canAffordFrom[n][n];
+    component or[n][n];
+    component yeet[n][n][n];
     
     component stateCheck = CheckRoot(levels);
 
     for (var i=0; i < n; i++){
         for (var j=0; j < n; j++) {
-            // Check if this event corresponds to the `to` account
+               // Check if this event corresponds to the `to` account
             isTo[i][j] = IsEqual();
             isTo[i][j].in[0] <== eventTos[i];
             isTo[i][j].in[1] <== eventTos[j];
@@ -125,19 +133,44 @@ template RollupValidator(levels) {
             isFirstFrom[i][j] = IsZero();
             isFirstFrom[i][j].in <== (j > 0 ? isFirstFrom[i][j-1].in : 0) + (i > j ? isFrom[i][j].out : 0);
 
-            // Only subtract from your balance if you can afford this transfer
+            // Check if this event is a deposit
+            isFromZero[i][j] = IsZero();
+            isFromZero[i][j].in <== eventFroms[j];
+            
+            // Total up the balance for the `from` account
+            for (var k=0; k <= i; k++) {
+                yeet[i][j][k] = IsEqual();
+                yeet[i][j][k].in[0] <== eventFroms[j];
+                yeet[i][j][k].in[1] <== eventTos[k];
+                
+                b[i][j][k] <== (k > 0 ? b[i][j][k-1] : 0) + (yeet[i][j][k].out * (j > 0 ? balances[k][j-1] : 0));
+            }
+
+            // Only increase your balance if `from` can afford this transfer
+            canAffordTo[i][j] = GreaterEqThan(252);
+            canAffordTo[i][j].in[0] <== b[i][j][i];
+            canAffordTo[i][j].in[1] <== eventValues[j];
+
+            // Only decrease from your balance if you can afford this transfer
             canAffordFrom[i][j] = GreaterEqThan(252);
             canAffordFrom[i][j].in[0] <== j > 0 ? balances[i][j-1] : 0;
             canAffordFrom[i][j].in[1] <== eventValues[j];
             
-            shouldIncreaseBalance[i][j] <== isFirstTo[i][j].out * isTo[i][j].out;
-            shouldDecreaseBalance[i][j] <== isFirstFrom[i][j].out * isFrom[i][j].out;
+            isValidTo[i][j] <== isFirstTo[i][j].out * isTo[i][j].out;
+            isValidFrom[i][j] <== isFirstFrom[i][j].out * isFrom[i][j].out;
+
+            or[i][j] = OR();
+            or[i][j].a <== canAffordTo[i][j].out;
+            or[i][j].b <== isFromZero[i][j].out;
+
+            shouldIncreaseBalance[i][j] <== isValidTo[i][j] * or[i][j].out;
+            shouldDecreaseBalance[i][j] <== isValidFrom[i][j] * canAffordFrom[i][j].out;
 
             credit[i][j] <== shouldIncreaseBalance[i][j] * eventValues[j];
             debit[i][j] <== shouldDecreaseBalance[i][j] * eventValues[j];       
 
             // Update the balance for account `i` at event `j`
-            balances[i][j] <== (j > 0 ? balances[i][j-1] : 0) + credit[i][j] - (debit[i][j] * canAffordFrom[i][j].out);
+            balances[i][j] <== (j > 0 ? balances[i][j-1] : 0) + credit[i][j] - debit[i][j];
         }
 
         // Check the event hashes
