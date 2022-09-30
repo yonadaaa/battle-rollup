@@ -89,9 +89,9 @@ template RollupValidator(levels) {
     signal input values[n];
     
     signal isDefault[n];
-    signal useNewHash[n];
-    signal useCurrentHash[n];
-    signal currentRoot[n];
+    signal newHash[n];
+    signal currentHash[n];
+    signal eventsRootsActual[n];
     signal trackFrom[n][n];
     signal fromBalance[n][n];
     signal shouldDecrease[n][n];
@@ -105,7 +105,7 @@ template RollupValidator(levels) {
 
     component eventHashers[n];
     component stateHashers[n];
-    component eventRoots[n];
+    component eventRootsPotential[n];
     component depositEvent[n];
     component burnEvent[n];
     component sufficientFunds[n];
@@ -173,17 +173,17 @@ template RollupValidator(levels) {
         eventHashers[i].two <== tos[i];
         eventHashers[i].three <== values[i];
 
-        eventRoots[i] = HashLeftRight();
-        eventRoots[i].left <== i > 0 ? eventRoots[i-1].hash : 0;
-        eventRoots[i].right <== eventHashers[i].hash;
+        eventRootsPotential[i] = HashLeftRight();
+        eventRootsPotential[i].left <== i > 0 ? eventRootsPotential[i-1].hash : 0;
+        eventRootsPotential[i].right <== eventHashers[i].hash;
 
-        // Check if that is an actual event, and not just default signals
-        // The smart contract does not "pad" the events, so the hash may not be of N events.
-        isDefault[i] <== burnEvent[i].out * depositEvent[i].out;
-        useNewHash[i] <== (1 - isDefault[i]) * eventRoots[i].hash;
-        useCurrentHash[i] <== isDefault[i] * (i > 0 ? currentRoot[i-1] : 0);
+        // If both accounts are zero, we have processed all events and these are just default signals
+        // If so, stop updating the event root, as the smart contract does not "pad" the (n-i) remaining events
+        isDefault[i] <== depositEvent[i].out * burnEvent[i].out;
+        newHash[i] <== (1 - isDefault[i]) * eventRootsPotential[i].hash;
+        currentHash[i] <== isDefault[i] * (i > 0 ? eventsRootsActual[i-1] : 0);
 
-        currentRoot[i] <== useCurrentHash[i] + useNewHash[i];
+        eventsRootsActual[i] <== currentHash[i] + newHash[i];
 
         // Check the state merkle tree
         stateHashers[i] = HashLeftRight();
@@ -193,7 +193,7 @@ template RollupValidator(levels) {
         stateCheck.leaves[i] <== stateHashers[i].hash;
     }
 
-    eventRoot <== currentRoot[n-1];
+    eventRoot <== eventsRootsActual[n-1];
     stateRoot <== stateCheck.root;
 }
 
