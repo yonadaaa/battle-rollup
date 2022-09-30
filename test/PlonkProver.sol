@@ -19,11 +19,11 @@ contract PlonkProver is Script {
             "input.json",
             string(
                 abi.encodePacked(
-                    '{"eventFroms":',
+                    '{"froms":',
                     toString(eventFroms),
-                    ',"eventTos":',
+                    ',"tos":',
                     toString(eventTos),
-                    ',"eventValues":',
+                    ',"values":',
                     toString(eventValues),
                     "}"
                 )

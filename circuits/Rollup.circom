@@ -84,128 +84,110 @@ template CheckRoot(levels) {
 template RollupValidator(levels) {
     var n = 2**levels;
 
-    signal input eventFroms[n];
-    signal input eventTos[n];
-    signal input eventValues[n];
-
+    signal input froms[n];
+    signal input tos[n];
+    signal input values[n];
+    
     signal isDefault[n];
     signal useNewHash[n];
     signal useCurrentHash[n];
     signal currentRoot[n];
-    signal isValidTo[n][n];
-    signal isValidFrom[n][n];
-    signal shouldIncreaseBalance[n][n];
-    signal shouldDecreaseBalance[n][n];
-    signal credit[n][n];
+    signal trackFrom[n][n];
+    signal fromBalance[n][n];
+    signal shouldDecrease[n][n];
+    signal shouldIncrease[n][n];
     signal debit[n][n];
-    signal b[n][n][n];
+    signal credit[n][n];
     signal balances[n][n];
 
     signal output eventRoot;
     signal output stateRoot;
 
-    component toZero[n];
-    component fromZero[n];
     component eventHashers[n];
     component stateHashers[n];
-    component rootHashers[n];
-    component isTo[n][n];
+    component eventRoots[n];
+    component depositEvent[n];
+    component burnEvent[n];
+    component sufficientFunds[n];
+    component validEvent[n];
     component isFrom[n][n];
-    component isFirstTo[n][n];
-    component isFirstFrom[n][n];
-    component isFromZero[n][n];
-    component canAffordTo[n][n];
-    component canAffordFrom[n][n];
-    component or[n][n];
-    component yeet[n][n][n];
-    
+    component isTo[n][n];
+    component isFromFirst[n][n];
+
     component stateCheck = CheckRoot(levels);
 
-    for (var i=0; i < n; i++){
+    for (var i=0; i < n; i++) {
+        // Deposits are represented as "transfers" from the zero address
+        depositEvent[i] = IsZero();
+        depositEvent[i].in <== froms[i];
+
+        burnEvent[i] = IsZero();
+        burnEvent[i].in <== tos[i];
+
+        // Find the balance of account `j` during this event `i`
         for (var j=0; j < n; j++) {
-               // Check if this event corresponds to the `to` account
-            isTo[i][j] = IsEqual();
-            isTo[i][j].in[0] <== eventTos[i];
-            isTo[i][j].in[1] <== eventTos[j];
-
-            // Check if this event corresponds to the `from` account
+            // Array access logic
             isFrom[i][j] = IsEqual();
-            isFrom[i][j].in[0] <== eventTos[i];
-            isFrom[i][j].in[1] <== eventFroms[j];
-            
-            // Check if this account occurs previously in the array (to prevent recording an accounts balance twice)
-            isFirstTo[i][j] = IsZero();
-            isFirstTo[i][j].in <== (j > 0 ? isFirstTo[i][j-1].in : 0) + (i > j ? isTo[i][j].out : 0);
-            isFirstFrom[i][j] = IsZero();
-            isFirstFrom[i][j].in <== (j > 0 ? isFirstFrom[i][j-1].in : 0) + (i > j ? isFrom[i][j].out : 0);
+            isFrom[i][j].in[0] <== froms[i];
+            isFrom[i][j].in[1] <== tos[j];
 
-            // Check if this event is a deposit
-            isFromZero[i][j] = IsZero();
-            isFromZero[i][j].in <== eventFroms[j];
-            
-            // Total up the balance for the `from` account
-            for (var k=0; k <= i; k++) {
-                yeet[i][j][k] = IsEqual();
-                yeet[i][j][k].in[0] <== eventFroms[j];
-                yeet[i][j][k].in[1] <== eventTos[k];
-                
-                b[i][j][k] <== (k > 0 ? b[i][j][k-1] : 0) + (yeet[i][j][k].out * (j > 0 ? balances[k][j-1] : 0));
-            }
+            isTo[i][j] = IsEqual();
+            isTo[i][j].in[0] <== tos[i];
+            isTo[i][j].in[1] <== tos[j];
 
-            // Only increase your balance if `from` can afford this transfer
-            canAffordTo[i][j] = GreaterEqThan(252);
-            canAffordTo[i][j].in[0] <== b[i][j][i];
-            canAffordTo[i][j].in[1] <== eventValues[j];
+            // If we have already counted the balance for `from`, don't count it again
+            isFromFirst[i][j] = IsZero();
+            isFromFirst[i][j].in <== (j > 0 ? fromBalance[i][j-1] : 0);
 
-            // Only decrease from your balance if you can afford this transfer
-            canAffordFrom[i][j] = GreaterEqThan(252);
-            canAffordFrom[i][j].in[0] <== j > 0 ? balances[i][j-1] : 0;
-            canAffordFrom[i][j].in[1] <== eventValues[j];
-            
-            isValidTo[i][j] <== isFirstTo[i][j].out * isTo[i][j].out;
-            isValidFrom[i][j] <== isFirstFrom[i][j].out * isFrom[i][j].out;
+            trackFrom[i][j] <== isFromFirst[i][j].out * isFrom[i][j].out;
 
-            or[i][j] = OR();
-            or[i][j].a <== canAffordTo[i][j].out;
-            or[i][j].b <== isFromZero[i][j].out;
+            fromBalance[i][j] <== (j > 0 ? fromBalance[i][j-1] : 0) + (trackFrom[i][j] * (i > 0 ? balances[i-1][j] : 0));
+        }
+        
+        // If the `from` account had sufficient funds for this transfer, in the previous timestep
+        sufficientFunds[i] = GreaterEqThan(252);
+        sufficientFunds[i].in[0] <== fromBalance[i][n-1];
+        sufficientFunds[i].in[1] <== values[i];
 
-            shouldIncreaseBalance[i][j] <== isValidTo[i][j] * or[i][j].out;
-            shouldDecreaseBalance[i][j] <== isValidFrom[i][j] * canAffordFrom[i][j].out;
+        // Either the event is a deposit or the `from` account needs to have enough funds
+        validEvent[i] = OR();
+        validEvent[i].a <== depositEvent[i].out;
+        validEvent[i].b <== sufficientFunds[i].out;
+    
+        for (var j=0; j < n; j++) {
+            // If this is the "from" account, and the event is valid
+            shouldDecrease[i][j] <== isFrom[i][j].out * validEvent[i].out;
+            // This is the "to" account and the event is valid
+            shouldIncrease[i][j] <== isTo[i][j].out * validEvent[i].out;
 
-            credit[i][j] <== shouldIncreaseBalance[i][j] * eventValues[j];
-            debit[i][j] <== shouldDecreaseBalance[i][j] * eventValues[j];       
+            // Subtract `debit` from balance
+            debit[i][j] <== shouldDecrease[i][j] * values[i];
+            // Add `credit` to balance
+            credit[i][j] <== shouldIncrease[i][j] * values[i];
 
-            // Update the balance for account `i` at event `j`
-            balances[i][j] <== (j > 0 ? balances[i][j-1] : 0) + credit[i][j] - debit[i][j];
+            balances[i][j] <== (i > 0 ? balances[i-1][j] : 0) + credit[i][j] - debit[i][j];
         }
 
-        // Check the event hashes
-        // TODO: if `from` and `to` are zero, don't update rootHashers
         eventHashers[i] = HashThree();
-        eventHashers[i].one <== eventFroms[i];
-        eventHashers[i].two <== eventTos[i];
-        eventHashers[i].three <== eventValues[i];
+        eventHashers[i].one <== froms[i];
+        eventHashers[i].two <== tos[i];
+        eventHashers[i].three <== values[i];
 
-        rootHashers[i] = HashLeftRight();
-        rootHashers[i].left <== i > 0 ? rootHashers[i-1].hash : 0;
-        rootHashers[i].right <== eventHashers[i].hash;
-
-        toZero[i] = IsZero();
-        toZero[i].in <== eventTos[i];
-        fromZero[i] = IsZero();
-        fromZero[i].in <== eventFroms[i];
+        eventRoots[i] = HashLeftRight();
+        eventRoots[i].left <== i > 0 ? eventRoots[i-1].hash : 0;
+        eventRoots[i].right <== eventHashers[i].hash;
 
         // Check if that is an actual event, and not just default signals
         // The smart contract does not "pad" the events, so the hash may not be of N events.
-        isDefault[i] <== toZero[i].out * fromZero[i].out;
-        useNewHash[i] <== (1 - isDefault[i]) * rootHashers[i].hash;
+        isDefault[i] <== burnEvent[i].out * depositEvent[i].out;
+        useNewHash[i] <== (1 - isDefault[i]) * eventRoots[i].hash;
         useCurrentHash[i] <== isDefault[i] * (i > 0 ? currentRoot[i-1] : 0);
 
         currentRoot[i] <== useCurrentHash[i] + useNewHash[i];
 
         // Check the state merkle tree
         stateHashers[i] = HashLeftRight();
-        stateHashers[i].left <== eventTos[i];
+        stateHashers[i].left <== tos[i];
         stateHashers[i].right <== balances[i][n-1];
 
         stateCheck.leaves[i] <== stateHashers[i].hash;
@@ -216,3 +198,9 @@ template RollupValidator(levels) {
 }
 
 component main = RollupValidator(2);
+
+/* INPUT = {
+    "froms":   [0,1,0,1],
+    "tos":     [1,2,1,3],
+    "values":  [10,7,50,20]
+} */
