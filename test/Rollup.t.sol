@@ -181,4 +181,47 @@ contract RollupTest is Test {
             );
         }
     }
+
+    // Foundry tests are run in parallel so commenting this out for now
+    // function testPart() public {
+    //     address[N] memory froms;
+    //     address[N] memory tos;
+    //     uint256[N] memory values;
+
+    //     tos[0] = 0x9c1FE876125D0f6794cB8630bb9e4482125350B4;
+    //     values[0] = 100;
+
+    //     uint256[N] memory balances;
+    //     balances[0] = 100;
+    //     balances[1] = 0;
+    //     balances[2] = 0;
+    //     balances[3] = 0;
+    //     for (uint256 i; i < N; i++) {
+    //         stateTree.insert(
+    //             stateTree.hashLeftRight(
+    //                 stateTree.hasher(),
+    //                 bytes32(uint256(tos[i])),
+    //                 bytes32(balances[i])
+    //             )
+    //         );
+    //     }
+
+    //     // Only perform one event
+    //     for (uint256 i; i < 1; i++) {
+    //         vm.deal(tos[i], type(uint32).max);
+    //         vm.prank(tos[i]);
+    //         rollup.deposit{value: values[i]}();
+    //     }
+
+    //     vm.warp(block.timestamp + LIFESPAN + 10);
+
+    //     // Resolve the rollup
+    //     {
+    //         PlonkProver prover = new PlonkProver();
+
+    //         bytes memory proof = prover.fullProve(froms, tos, values);
+
+    //         rollup.resolve(stateTree.getLastRoot(), proof);
+    //     }
+    // }
 }

@@ -88,6 +88,10 @@ template RollupValidator(levels) {
     signal input eventTos[n];
     signal input eventValues[n];
 
+    signal isDefault[n];
+    signal useNewHash[n];
+    signal useCurrentHash[n];
+    signal currentRoot[n];
     signal isValidTo[n][n];
     signal isValidFrom[n][n];
     signal shouldIncreaseBalance[n][n];
@@ -100,6 +104,8 @@ template RollupValidator(levels) {
     signal output eventRoot;
     signal output stateRoot;
 
+    component toZero[n];
+    component fromZero[n];
     component eventHashers[n];
     component stateHashers[n];
     component rootHashers[n];
@@ -174,6 +180,7 @@ template RollupValidator(levels) {
         }
 
         // Check the event hashes
+        // TODO: if `from` and `to` are zero, don't update rootHashers
         eventHashers[i] = HashThree();
         eventHashers[i].one <== eventFroms[i];
         eventHashers[i].two <== eventTos[i];
@@ -183,6 +190,19 @@ template RollupValidator(levels) {
         rootHashers[i].left <== i > 0 ? rootHashers[i-1].hash : 0;
         rootHashers[i].right <== eventHashers[i].hash;
 
+        toZero[i] = IsZero();
+        toZero[i].in <== eventTos[i];
+        fromZero[i] = IsZero();
+        fromZero[i].in <== eventFroms[i];
+
+        // Check if that is an actual event, and not just default signals
+        // The smart contract does not "pad" the events, so the hash may not be of N events.
+        isDefault[i] <== toZero[i].out * fromZero[i].out;
+        useNewHash[i] <== (1 - isDefault[i]) * rootHashers[i].hash;
+        useCurrentHash[i] <== isDefault[i] * (i > 0 ? currentRoot[i-1] : 0);
+
+        currentRoot[i] <== useCurrentHash[i] + useNewHash[i];
+
         // Check the state merkle tree
         stateHashers[i] = HashLeftRight();
         stateHashers[i].left <== eventTos[i];
@@ -191,7 +211,7 @@ template RollupValidator(levels) {
         stateCheck.leaves[i] <== stateHashers[i].hash;
     }
 
-    eventRoot <== rootHashers[n-1].hash;
+    eventRoot <== currentRoot[n-1];
     stateRoot <== stateCheck.root;
 }
 
