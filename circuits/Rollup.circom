@@ -101,8 +101,9 @@ template RollupValidator(levels) {
     component rootHashers[n];
     component isTo[n][n];
     component isFrom[n][n];
-    component toSeen[n][n];
-    component fromSeen[n][n];
+    component isFirstTo[n][n];
+    component isFirstFrom[n][n];
+    component canAffordFrom[n][n];
     
     component stateCheck = CheckRoot(levels);
 
@@ -119,19 +120,24 @@ template RollupValidator(levels) {
             isFrom[i][j].in[1] <== eventFroms[j];
             
             // Check if this account occurs previously in the array (to prevent recording an accounts balance twice)
-            toSeen[i][j] = IsZero();
-            toSeen[i][j].in <== (j > 0 ? toSeen[i][j-1].in : 0) + (i > j ? isTo[i][j].out : 0);
-            fromSeen[i][j] = IsZero();
-            fromSeen[i][j].in <== (j > 0 ? fromSeen[i][j-1].in : 0) + (i > j ? isFrom[i][j].out : 0);
+            isFirstTo[i][j] = IsZero();
+            isFirstTo[i][j].in <== (j > 0 ? isFirstTo[i][j-1].in : 0) + (i > j ? isTo[i][j].out : 0);
+            isFirstFrom[i][j] = IsZero();
+            isFirstFrom[i][j].in <== (j > 0 ? isFirstFrom[i][j-1].in : 0) + (i > j ? isFrom[i][j].out : 0);
+
+            // Only subtract from your balance if you can afford this transfer
+            canAffordFrom[i][j] = GreaterEqThan(252);
+            canAffordFrom[i][j].in[0] <== j > 0 ? balances[i][j-1] : 0;
+            canAffordFrom[i][j].in[1] <== eventValues[j];
             
-            shouldIncreaseBalance[i][j] <== toSeen[i][j].out * isTo[i][j].out;
-            shouldDecreaseBalance[i][j] <== fromSeen[i][j].out * isFrom[i][j].out;
+            shouldIncreaseBalance[i][j] <== isFirstTo[i][j].out * isTo[i][j].out;
+            shouldDecreaseBalance[i][j] <== isFirstFrom[i][j].out * isFrom[i][j].out;
 
             credit[i][j] <== shouldIncreaseBalance[i][j] * eventValues[j];
             debit[i][j] <== shouldDecreaseBalance[i][j] * eventValues[j];       
 
             // Update the balance for account `i` at event `j`
-            balances[i][j] <== (j > 0 ? balances[i][j-1] : 0) + credit[i][j] - debit[i][j];
+            balances[i][j] <== (j > 0 ? balances[i][j-1] : 0) + credit[i][j] - (debit[i][j] * canAffordFrom[i][j].out);
         }
 
         // Check the event hashes
@@ -156,4 +162,4 @@ template RollupValidator(levels) {
     stateRoot <== stateCheck.root;
 }
 
-component main = RollupValidator(3);
+component main = RollupValidator(2);

@@ -126,8 +126,6 @@ contract Rollup {
         bytes32[] calldata pathElements,
         bool[] calldata pathIndices
     ) external {
-        require(stateRoot != "", "The rollup has not been resolved");
-
         bytes32 leaf = hashLeftRight(bytes32(uint256(account)), bytes32(value));
 
         checkMerkleTree(leaf, pathElements, pathIndices);

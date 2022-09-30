@@ -4,12 +4,11 @@ pragma abicoder v2;
 
 import "forge-std/Test.sol";
 import "tornado-core/Mocks/MerkleTreeWithHistoryMock.sol";
-import "tornado-core/Mocks/MerkleTreeWithHistoryMock.sol";
 import "./PlonkProver.sol";
 import "../src/Rollup.sol";
 
 contract RollupTest is Test {
-    uint32 public constant LEVELS = 3;
+    uint32 public constant LEVELS = 2;
     uint256 public constant N = 2**LEVELS;
     uint256 public constant LIFESPAN = 10000;
 
@@ -66,13 +65,15 @@ contract RollupTest is Test {
                 bool fromSeen = fromSeenCounter == 0;
 
                 bool shouldIncreaseBalance = toSeen && isTo;
-                bool shouldDecreaseBalance = fromSeen && isFrom;
+                bool shouldDecreaseBalance = fromSeen &&
+                    isFrom &&
+                    balances[i] >= values[j];
 
                 if (shouldIncreaseBalance) {
                     balances[i] += values[j];
                 }
                 if (shouldDecreaseBalance) {
-                    vm.assume(balances[i] >= values[j]);
+                    // if balance is not sufficient, don't add here
                     balances[i] -= values[j];
                 }
             }
@@ -103,7 +104,7 @@ contract RollupTest is Test {
             bytes32[] memory pathElements = new bytes32[](LEVELS);
             bool[] memory pathIndices = new bool[](LEVELS);
 
-            vm.expectRevert("The rollup has not been resolved");
+            vm.expectRevert("Provided root does not match result");
             rollup.withdraw(tos[i], balances[i], pathElements, pathIndices);
         }
 
@@ -116,6 +117,20 @@ contract RollupTest is Test {
         }
 
         vm.warp(block.timestamp + LIFESPAN + 10);
+
+        // Attempt to deposit into the rollup after resolution
+        for (uint256 i; i < N; i++) {
+            vm.prank(tos[i]);
+            vm.expectRevert("The rollup has entered the resolution stage");
+            rollup.deposit();
+        }
+
+        // Attempt to transfer after resolution
+        for (uint256 i; i < N; i++) {
+            vm.prank(froms[i]);
+            vm.expectRevert("The rollup has entered the resolution stage");
+            rollup.transfer(bytes32(uint256(tos[i])), bytes32(values[i]));
+        }
 
         // Attempt to resolve the rollup with an invalid proof
         {
@@ -132,13 +147,6 @@ contract RollupTest is Test {
             bytes memory proof = prover.fullProve(froms, tos, values);
 
             rollup.resolve(stateTree.getLastRoot(), proof);
-        }
-
-        // Attempt to deposit into the rollup after resolution
-        for (uint256 i; i < N; i++) {
-            vm.prank(tos[i]);
-            vm.expectRevert("The rollup has entered the resolution stage");
-            rollup.deposit();
         }
 
         // Attempt to withdraw from the rollup without a valid merkle proof
