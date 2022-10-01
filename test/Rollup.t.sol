@@ -180,6 +180,49 @@ contract RollupTest is Test {
                 pathIndices
             );
         }
+
+        // Withdraw from the rollup
+        {
+            bytes32[] memory pathElements = new bytes32[](LEVELS);
+            bool[] memory pathIndices = new bool[](LEVELS);
+
+            pathElements[0] = stateTree.hashLeftRight(
+                stateTree.hasher(),
+                bytes32(uint256(tos[1])),
+                bytes32(balances[1][N - 1])
+            );
+
+            MerkleTreeWithHistoryMock temp = new MerkleTreeWithHistoryMock(
+                1,
+                stateTree.hasher()
+            );
+
+            temp.insert(
+                stateTree.hashLeftRight(
+                    stateTree.hasher(),
+                    bytes32(uint256(tos[2])),
+                    bytes32(balances[2][N - 1])
+                )
+            );
+
+            temp.insert(
+                stateTree.hashLeftRight(
+                    stateTree.hasher(),
+                    bytes32(uint256(tos[3])),
+                    bytes32(balances[3][N - 1])
+                )
+            );
+
+            pathElements[1] = temp.getLastRoot();
+
+            vm.expectCall(tos[0], "");
+            rollup.withdraw(
+                tos[0],
+                balances[0][N - 1],
+                pathElements,
+                pathIndices
+            );
+        }
     }
 
     // Foundry tests are run in parallel so commenting this out for now
