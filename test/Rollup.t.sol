@@ -8,7 +8,7 @@ import "./PlonkProver.sol";
 import "../src/Rollup.sol";
 
 contract RollupTest is Test {
-    uint32 public constant LEVELS = 2;
+    uint32 public constant LEVELS = 4;
     uint256 public constant N = 2**LEVELS;
     uint256 public constant LIFESPAN = 10000;
 
@@ -192,28 +192,26 @@ contract RollupTest is Test {
                 bytes32(balances[1][N - 1])
             );
 
-            MerkleTreeWithHistoryMock temp = new MerkleTreeWithHistoryMock(
-                1,
-                stateTree.hasher()
-            );
+            for (uint32 level = 1; level < LEVELS; level++) {
+                MerkleTreeWithHistoryMock temp = new MerkleTreeWithHistoryMock(
+                    level,
+                    stateTree.hasher()
+                );
 
-            temp.insert(
-                stateTree.hashLeftRight(
-                    stateTree.hasher(),
-                    bytes32(uint256(tos[2])),
-                    bytes32(balances[2][N - 1])
-                )
-            );
+                // 2, 3
+                // 4, 5, 6, 7
+                for (uint256 i = 2**level; i < 2**(level + 1); i++) {
+                    temp.insert(
+                        stateTree.hashLeftRight(
+                            stateTree.hasher(),
+                            bytes32(uint256(tos[i])),
+                            bytes32(balances[i][N - 1])
+                        )
+                    );
+                }
 
-            temp.insert(
-                stateTree.hashLeftRight(
-                    stateTree.hasher(),
-                    bytes32(uint256(tos[3])),
-                    bytes32(balances[3][N - 1])
-                )
-            );
-
-            pathElements[1] = temp.getLastRoot();
+                pathElements[level] = temp.getLastRoot();
+            }
 
             vm.expectCall(tos[0], "");
             rollup.withdraw(

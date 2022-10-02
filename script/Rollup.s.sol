@@ -6,7 +6,7 @@ import "forge-std/Script.sol";
 import "../src/Rollup.sol";
 
 contract Deploy is Script {
-    uint32 public constant LEVELS = 2;
+    uint32 public constant LEVELS = 4;
     uint256 public constant LIFESPAN = 10000;
 
     function run() external {

@@ -6,7 +6,7 @@ import "forge-std/Test.sol";
 
 // TODO: Auto-generate prover contract from a template file, based on circuit inputs
 contract PlonkProver is Script {
-    uint32 public constant LEVELS = 2;
+    uint32 public constant LEVELS = 4;
     uint256 public constant N = 2**LEVELS;
 
     // TODO: Determine argument types and names from circuit inputs
@@ -15,8 +15,11 @@ contract PlonkProver is Script {
         address[N] memory eventTos,
         uint256[N] memory eventValues
     ) public returns (bytes memory proof) {
+        string memory fileName = "input.json";
+
+        // TODO: can this just be written as an array of signals?
         vm.writeFile(
-            "input.json",
+            fileName,
             string(
                 abi.encodePacked(
                     '{"froms":',
@@ -30,23 +33,30 @@ contract PlonkProver is Script {
             )
         );
 
-        string[] memory inputsP = new string[](8);
-        inputsP[0] = "snarkjs";
-        inputsP[1] = "plonk";
-        inputsP[2] = "fullprove";
-        inputsP[3] = "input.json";
+        return fullProveFromFile(fileName);
+    }
+
+    function fullProveFromFile(string memory fileName)
+        public
+        returns (bytes memory proof)
+    {
+        string[] memory inputsProof = new string[](8);
+        inputsProof[0] = "snarkjs";
+        inputsProof[1] = "plonk";
+        inputsProof[2] = "fullprove";
+        inputsProof[3] = fileName;
         // TODO: fetch filename when users generates prover for circuit
-        inputsP[4] = "circuits/Rollup_js/Rollup.wasm";
-        inputsP[5] = "circuits/Rollup.zkey";
-        inputsP[6] = "proof.json";
-        inputsP[7] = "public.json";
-        vm.ffi(inputsP);
+        inputsProof[4] = "circuits/Rollup_js/Rollup.wasm";
+        inputsProof[5] = "circuits/Rollup.zkey";
+        inputsProof[6] = "proof.json";
+        inputsProof[7] = "public.json";
+        vm.ffi(inputsProof);
 
         string[] memory inputs = new string[](1);
         inputs[0] = "./prove.sh";
         proof = vm.ffi(inputs);
 
-        vm.removeFile("input.json");
+        vm.removeFile(fileName);
         vm.removeFile("proof.json");
         vm.removeFile("public.json");
 
