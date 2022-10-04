@@ -156,7 +156,7 @@ template RollupValidator(levels) {
     
         for (var j=0; j < n; j++) {
             // If this is the "from" account, and the event is valid
-            shouldDecrease[i][j] <== isFrom[i][j].out * validEvent[i].out;
+            shouldDecrease[i][j] <== isFrom[i][j].out * sufficientFunds[i].out;
             // This is the "to" account and the event is valid
             shouldIncrease[i][j] <== isTo[i][j].out * validEvent[i].out;
 
@@ -184,11 +184,13 @@ template RollupValidator(levels) {
         currentHash[i] <== isDefault[i] * (i > 0 ? eventsRootsActual[i-1] : 0);
 
         eventsRootsActual[i] <== currentHash[i] + newHash[i];
+    }
 
+    for (var i=0; i < n; i++) {
         // Check the state merkle tree
         stateHashers[i] = HashLeftRight();
         stateHashers[i].left <== tos[i];
-        stateHashers[i].right <== balances[i][n-1];
+        stateHashers[i].right <== balances[n-1][i];
 
         stateCheck.leaves[i] <== stateHashers[i].hash;
     }
@@ -197,7 +199,7 @@ template RollupValidator(levels) {
     stateRoot <== stateCheck.root;
 }
 
-component main = RollupValidator(4);
+component main = RollupValidator(2);
 
 /* INPUT = {
     "froms":   [0,1,0,1],

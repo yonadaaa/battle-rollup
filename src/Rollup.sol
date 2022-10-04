@@ -13,7 +13,7 @@ contract Rollup {
     uint32 public levels;
 
     PlonkVerifier private verifier;
-    bytes32 private eventRoot;
+    bytes32 public eventRoot;
     bytes32 private stateRoot;
     uint256 private total;
     uint256 private expiry;

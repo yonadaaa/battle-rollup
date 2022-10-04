@@ -4,11 +4,9 @@ pragma abicoder v2;
 
 import "forge-std/Script.sol";
 import "../src/Rollup.sol";
+import "../test/Rollup.t.sol";
 
 contract Deploy is Script {
-    uint32 public constant LEVELS = 4;
-    uint256 public constant LIFESPAN = 10000;
-
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
@@ -53,3 +51,57 @@ contract Transfer is Script {
         vm.stopBroadcast();
     }
 }
+
+// This script has to generate the state root based on `tos` addresses and balances
+// and generate a proof to pass into the contract
+// Before broadcasting, read in the input file and generate the state root from it.
+
+// contract Resolve is Script {
+//     function run() external {
+//         address[N] memory froms;
+//         froms[0] = address(0);
+//         froms[1] = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
+//         froms[2] = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
+//         froms[3] = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8;
+//         froms[4] = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8;
+
+//         address[N] memory tos;
+//         tos[0] = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
+//         tos[1] = 0xaD94d1Bfd16738bD9d3e527de9993D41fe19C5Fd;
+//         tos[2] = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8;
+//         tos[3] = 0xaD94d1Bfd16738bD9d3e527de9993D41fe19C5Fd;
+//         tos[4] = 0xaD94d1Bfd16738bD9d3e527de9993D41fe19C5Fd;
+
+//         uint256[N] memory values;
+//         values[0] = 5000000000000000000;
+//         values[1] = 2000000000000000000;
+//         values[2] = 1000000000000000000;
+//         values[3] = 3000000000000000000;
+//         values[4] = 3000000000000000000;
+
+//         // Maybe balance calculator is wrong?
+//         uint256[N][N] memory balances;
+//         balances[0][N - 1] = 2000000000000000000;
+//         balances[1][N - 1] = 2000000000000000000;
+//         balances[2][N - 1] = 1000000000000000000;
+
+//         PlonkProver prover = new PlonkProver();
+//         bytes memory proof = prover.fullProve(froms, tos, values);
+
+//         Rollup rollup = Rollup(0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512);
+
+//         MerkleTreeWithHistoryMock stateTree = getStateTree(
+//             tos,
+//             balances,
+//             rollup.hasher()
+//         );
+//         bytes32 state = stateTree.getLastRoot();
+
+//         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+//         vm.startBroadcast(deployerPrivateKey);
+
+//         rollup.resolve(state, proof);
+
+//         vm.stopBroadcast();
+//     }
+// }

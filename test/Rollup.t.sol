@@ -7,11 +7,11 @@ import "tornado-core/Mocks/MerkleTreeWithHistoryMock.sol";
 import "./PlonkProver.sol";
 import "../src/Rollup.sol";
 
-contract RollupTest is Test {
-    uint32 public constant LEVELS = 4;
-    uint256 public constant N = 2**LEVELS;
-    uint256 public constant LIFESPAN = 10000;
+uint32 constant LEVELS = 2;
+uint256 constant N = 2**LEVELS;
+uint256 constant LIFESPAN = 10000;
 
+contract RollupTest is Test {
     Rollup public rollup;
     MerkleTreeWithHistoryMock public stateTree;
 
@@ -88,8 +88,6 @@ contract RollupTest is Test {
                     balances[i][j] -= values[j];
                 }
             }
-
-            assertEq(balances[i][N - 1], 0);
 
             stateTree.insert(
                 stateTree.hashLeftRight(
@@ -198,8 +196,6 @@ contract RollupTest is Test {
                     stateTree.hasher()
                 );
 
-                // 2, 3
-                // 4, 5, 6, 7
                 for (uint256 i = 2**level; i < 2**(level + 1); i++) {
                     temp.insert(
                         stateTree.hashLeftRight(
@@ -223,46 +219,42 @@ contract RollupTest is Test {
         }
     }
 
-    // Foundry tests are run in parallel so commenting this out for now
-    // function testPart() public {
-    //     address[N] memory froms;
-    //     address[N] memory tos;
-    //     uint256[N] memory values;
+    function testPart() public {
+        address[N] memory froms;
+        address[N] memory tos;
+        uint256[N] memory values;
 
-    //     tos[0] = 0x9c1FE876125D0f6794cB8630bb9e4482125350B4;
-    //     values[0] = 100;
+        tos[0] = 0x9c1FE876125D0f6794cB8630bb9e4482125350B4;
+        values[0] = 100;
 
-    //     uint256[N] memory balances;
-    //     balances[0] = 100;
-    //     balances[1] = 0;
-    //     balances[2] = 0;
-    //     balances[3] = 0;
-    //     for (uint256 i; i < N; i++) {
-    //         stateTree.insert(
-    //             stateTree.hashLeftRight(
-    //                 stateTree.hasher(),
-    //                 bytes32(uint256(tos[i])),
-    //                 bytes32(balances[i])
-    //             )
-    //         );
-    //     }
+        uint256[N] memory balances;
+        balances[0] = 100;
+        for (uint256 i; i < N; i++) {
+            stateTree.insert(
+                stateTree.hashLeftRight(
+                    stateTree.hasher(),
+                    bytes32(uint256(tos[i])),
+                    bytes32(balances[i])
+                )
+            );
+        }
 
-    //     // Only perform one event
-    //     for (uint256 i; i < 1; i++) {
-    //         vm.deal(tos[i], type(uint32).max);
-    //         vm.prank(tos[i]);
-    //         rollup.deposit{value: values[i]}();
-    //     }
+        // Only perform one event
+        for (uint256 i; i < 1; i++) {
+            vm.deal(tos[i], type(uint32).max);
+            vm.prank(tos[i]);
+            rollup.deposit{value: values[i]}();
+        }
 
-    //     vm.warp(block.timestamp + LIFESPAN + 10);
+        vm.warp(block.timestamp + LIFESPAN + 10);
 
-    //     // Resolve the rollup
-    //     {
-    //         PlonkProver prover = new PlonkProver();
+        // Resolve the rollup
+        {
+            PlonkProver prover = new PlonkProver();
 
-    //         bytes memory proof = prover.fullProve(froms, tos, values);
+            bytes memory proof = prover.fullProve(froms, tos, values);
 
-    //         rollup.resolve(stateTree.getLastRoot(), proof);
-    //     }
-    // }
+            rollup.resolve(stateTree.getLastRoot(), proof);
+        }
+    }
 }
