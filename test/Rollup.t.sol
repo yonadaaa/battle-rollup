@@ -224,11 +224,16 @@ contract RollupTest is Test {
         address[N] memory tos;
         uint256[N] memory values;
 
+        froms[1] = 0x9c1FE876125D0f6794cB8630bb9e4482125350B4;
         tos[0] = 0x9c1FE876125D0f6794cB8630bb9e4482125350B4;
+        tos[1] = 0x1558cBfd659350c54EEeAd7555c0AD8817b0eC7e;
         values[0] = 100;
+        values[1] = 75;
 
         uint256[N] memory balances;
-        balances[0] = 100;
+        balances[0] = 25;
+        balances[1] = 75;
+
         for (uint256 i; i < N; i++) {
             stateTree.insert(
                 stateTree.hashLeftRight(
@@ -239,12 +244,14 @@ contract RollupTest is Test {
             );
         }
 
-        // Only perform one event
-        for (uint256 i; i < 1; i++) {
-            vm.deal(tos[i], type(uint32).max);
-            vm.prank(tos[i]);
-            rollup.deposit{value: values[i]}();
-        }
+        // Only perform two events
+        vm.deal(tos[0], type(uint32).max);
+        vm.prank(tos[0]);
+        rollup.deposit{value: values[0]}();
+
+        vm.deal(froms[1], type(uint32).max);
+        vm.prank(froms[1]);
+        rollup.transfer(bytes32(uint256(tos[1])), bytes32(values[1]));
 
         vm.warp(block.timestamp + LIFESPAN + 10);
 
