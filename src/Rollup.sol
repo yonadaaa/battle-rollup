@@ -10,18 +10,19 @@ contract Rollup {
         21888242871839275222246405745257275088548364400416034343698204186575808495617;
     IHasher public immutable hasher;
 
-    uint32 public levels;
-
     PlonkVerifier private verifier;
-    bytes32 public eventRoot;
+    bytes32 private eventRoot;
     bytes32 private stateRoot;
     uint256 private total;
-    uint256 private expiry;
+    uint256 public expiry;
+    uint32 private levels;
+
+    mapping(bytes32 => bool) private withdrawn;
 
     event Deposit(address to, uint256 value);
     event Transfer(address from, bytes32 to, bytes32 value);
     event Resolve();
-    event Withdraw(address account, uint256 value);
+    event Withdraw(address to, uint256 value);
 
     constructor(
         uint256 _expiry,
@@ -121,18 +122,20 @@ contract Rollup {
     }
 
     function withdraw(
-        address account,
+        address to,
         uint256 value,
         bytes32[] calldata pathElements,
         bool[] calldata pathIndices
     ) external {
-        bytes32 leaf = hashLeftRight(bytes32(uint256(account)), bytes32(value));
+        bytes32 leaf = hashLeftRight(bytes32(uint256(to)), bytes32(value));
 
+        require(!withdrawn[leaf], "This account has already withdrawn");
         checkMerkleTree(leaf, pathElements, pathIndices);
 
-        account.call{value: value}("");
+        withdrawn[leaf] = true;
+        to.call{value: value}("");
 
-        emit Withdraw(account, value);
+        emit Withdraw(to, value);
     }
 
     function checkMerkleTree(

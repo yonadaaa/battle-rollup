@@ -6,7 +6,7 @@ import "forge-std/Test.sol";
 
 // TODO: Auto-generate prover contract from a template file, based on circuit inputs
 contract PlonkProver is Script {
-    uint32 public constant LEVELS = 2;
+    uint32 public constant LEVELS = 5;
     uint256 public constant N = 2**LEVELS;
 
     // TODO: Determine argument types and names from circuit inputs

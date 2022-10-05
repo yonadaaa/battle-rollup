@@ -199,7 +199,7 @@ template RollupValidator(levels) {
     stateRoot <== stateCheck.root;
 }
 
-component main = RollupValidator(2);
+component main = RollupValidator(5);
 
 /* INPUT = {
     "froms":   [0,1,0,1],

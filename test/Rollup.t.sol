@@ -7,9 +7,27 @@ import "tornado-core/Mocks/MerkleTreeWithHistoryMock.sol";
 import "./PlonkProver.sol";
 import "../src/Rollup.sol";
 
-uint32 constant LEVELS = 2;
+uint32 constant LEVELS = 5;
 uint256 constant N = 2**LEVELS;
 uint256 constant LIFESPAN = 10000;
+
+function getStateTree(
+    IHasher addr,
+    address[N] memory tos,
+    uint256[N] memory balances
+) returns (MerkleTreeWithHistoryMock stateTree) {
+    stateTree = new MerkleTreeWithHistoryMock(LEVELS, addr);
+
+    for (uint256 i; i < N; i++) {
+        stateTree.insert(
+            stateTree.hashLeftRight(
+                stateTree.hasher(),
+                bytes32(uint256(tos[i])),
+                bytes32(balances[i])
+            )
+        );
+    }
+}
 
 contract RollupTest is Test {
     Rollup public rollup;
@@ -217,6 +235,45 @@ contract RollupTest is Test {
                 pathIndices
             );
         }
+
+        // Attempt to withdraw twice
+        {
+            bytes32[] memory pathElements = new bytes32[](LEVELS);
+            bool[] memory pathIndices = new bool[](LEVELS);
+
+            pathElements[0] = stateTree.hashLeftRight(
+                stateTree.hasher(),
+                bytes32(uint256(tos[1])),
+                bytes32(balances[1][N - 1])
+            );
+
+            for (uint32 level = 1; level < LEVELS; level++) {
+                MerkleTreeWithHistoryMock temp = new MerkleTreeWithHistoryMock(
+                    level,
+                    stateTree.hasher()
+                );
+
+                for (uint256 i = 2**level; i < 2**(level + 1); i++) {
+                    temp.insert(
+                        stateTree.hashLeftRight(
+                            stateTree.hasher(),
+                            bytes32(uint256(tos[i])),
+                            bytes32(balances[i][N - 1])
+                        )
+                    );
+                }
+
+                pathElements[level] = temp.getLastRoot();
+            }
+
+            vm.expectRevert("This account has already withdrawn");
+            rollup.withdraw(
+                tos[0],
+                balances[0][N - 1],
+                pathElements,
+                pathIndices
+            );
+        }
     }
 
     function testPart() public {
@@ -234,15 +291,7 @@ contract RollupTest is Test {
         balances[0] = 25;
         balances[1] = 75;
 
-        for (uint256 i; i < N; i++) {
-            stateTree.insert(
-                stateTree.hashLeftRight(
-                    stateTree.hasher(),
-                    bytes32(uint256(tos[i])),
-                    bytes32(balances[i])
-                )
-            );
-        }
+        stateTree = getStateTree(rollup.hasher(), tos, balances);
 
         // Only perform two events
         vm.deal(tos[0], type(uint32).max);

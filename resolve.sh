@@ -1,1 +1,1 @@
-forge script script/Rollup.s.sol:Resolve --fork-url http://localhost:8545 --broadcast --ffi
+forge script script/Rollup.s.sol:Resolve --rpc-url $RPC_URL --broadcast --verify -vvvv --ffi

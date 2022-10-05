@@ -19,7 +19,8 @@ contract Deploy is Script {
             addr := create(0, add(bytecode, 32), mload(bytecode))
         }
 
-        new Rollup(block.timestamp + LIFESPAN, LEVELS, addr);
+        uint256 lifespan = 2 hours;
+        new Rollup(block.timestamp + lifespan, LEVELS, addr);
 
         vm.stopBroadcast();
     }
@@ -52,56 +53,55 @@ contract Transfer is Script {
     }
 }
 
-// This script has to generate the state root based on `tos` addresses and balances
-// and generate a proof to pass into the contract
-// Before broadcasting, read in the input file and generate the state root from it.
+contract Advance is Script {
+    function run() external {
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        vm.startBroadcast(deployerPrivateKey);
 
-// contract Resolve is Script {
-//     function run() external {
-//         address[N] memory froms;
-//         froms[0] = address(0);
-//         froms[1] = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
-//         froms[2] = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
-//         froms[3] = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8;
-//         froms[4] = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8;
+        address(0).call("");
 
-//         address[N] memory tos;
-//         tos[0] = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
-//         tos[1] = 0xaD94d1Bfd16738bD9d3e527de9993D41fe19C5Fd;
-//         tos[2] = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8;
-//         tos[3] = 0xaD94d1Bfd16738bD9d3e527de9993D41fe19C5Fd;
-//         tos[4] = 0xaD94d1Bfd16738bD9d3e527de9993D41fe19C5Fd;
+        vm.stopBroadcast();
+    }
+}
 
-//         uint256[N] memory values;
-//         values[0] = 5000000000000000000;
-//         values[1] = 2000000000000000000;
-//         values[2] = 1000000000000000000;
-//         values[3] = 3000000000000000000;
-//         values[4] = 3000000000000000000;
+// This script is currently hardcoded. Replace the events with the actual events from your rollup.
 
-//         // Maybe balance calculator is wrong?
-//         uint256[N][N] memory balances;
-//         balances[0][N - 1] = 2000000000000000000;
-//         balances[1][N - 1] = 2000000000000000000;
-//         balances[2][N - 1] = 1000000000000000000;
+contract Resolve is Test {
+    function run() external {
+        address[N] memory froms;
 
-//         PlonkProver prover = new PlonkProver();
-//         bytes memory proof = prover.fullProve(froms, tos, values);
+        address[N] memory tos;
+        tos[0] = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
 
-//         Rollup rollup = Rollup(0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512);
+        uint256[N] memory values;
+        values[0] = 12 ether;
 
-//         MerkleTreeWithHistoryMock stateTree = getStateTree(
-//             tos,
-//             balances,
-//             rollup.hasher()
-//         );
-//         bytes32 state = stateTree.getLastRoot();
+        // TODO: use script for this
+        uint256[N] memory balances;
+        balances[0] = 12 ether;
 
-//         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-//         vm.startBroadcast(deployerPrivateKey);
+        PlonkProver prover = new PlonkProver();
+        bytes memory proof = prover.fullProve(froms, tos, values);
 
-//         rollup.resolve(state, proof);
+        Rollup rollup = Rollup(0xa95A928eEc085801d981d13FFE749872D8FD5bec);
 
-//         vm.stopBroadcast();
-//     }
-// }
+        MerkleTreeWithHistoryMock stateTree = getStateTree(
+            rollup.hasher(),
+            tos,
+            balances
+        );
+        bytes32 state = stateTree.getLastRoot();
+
+        assertEq(
+            uint256(state),
+            488335304555753880643531538279681135946648963620823676573703378368655156337
+        );
+
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        vm.startBroadcast(deployerPrivateKey);
+
+        rollup.resolve(state, proof);
+
+        vm.stopBroadcast();
+    }
+}

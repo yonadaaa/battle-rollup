@@ -1,0 +1,1 @@
+forge script script/Rollup.s.sol:Deploy --rpc-url $RPC_URL --broadcast --verify -vvvv
