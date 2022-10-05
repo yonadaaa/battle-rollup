@@ -12,9 +12,9 @@ contract Rollup {
 
     PlonkVerifier private verifier;
     bytes32 private eventRoot;
-    bytes32 private stateRoot;
-    uint256 private total;
+    bytes32 public stateRoot;
     uint256 public expiry;
+    uint256 private total;
     uint32 private levels;
 
     mapping(bytes32 => bool) private withdrawn;

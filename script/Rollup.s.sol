@@ -65,25 +65,32 @@ contract Advance is Script {
 }
 
 // This script is currently hardcoded. Replace the events with the actual events from your rollup.
-
-contract Resolve is Test {
+contract Resolve is Script {
     function run() external {
         address[N] memory froms;
+        froms[1] = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
 
         address[N] memory tos;
         tos[0] = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
+        tos[1] = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8;
+        tos[2] = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
+        tos[3] = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
 
         uint256[N] memory values;
-        values[0] = 12 ether;
+        values[0] = 100 ether;
+        values[1] = 25 ether;
+        values[2] = 100 ether;
+        values[3] = 50000 ether;
 
         // TODO: use script for this
         uint256[N] memory balances;
-        balances[0] = 12 ether;
+        balances[0] = values[0] - values[1] + values[2] + values[3];
+        balances[1] = values[1];
 
         PlonkProver prover = new PlonkProver();
         bytes memory proof = prover.fullProve(froms, tos, values);
 
-        Rollup rollup = Rollup(0xa95A928eEc085801d981d13FFE749872D8FD5bec);
+        Rollup rollup = Rollup(0x721a1ecB9105f2335a8EA7505D343a5a09803A06);
 
         MerkleTreeWithHistoryMock stateTree = getStateTree(
             rollup.hasher(),
@@ -91,12 +98,6 @@ contract Resolve is Test {
             balances
         );
         bytes32 state = stateTree.getLastRoot();
-
-        assertEq(
-            uint256(state),
-            488335304555753880643531538279681135946648963620823676573703378368655156337
-        );
-
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
 
