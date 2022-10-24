@@ -1,9 +1,6 @@
 [submodule "lib/forge-std"]
 	path = lib/forge-std
 	url = https://github.com/foundry-rs/forge-std
-[submodule "lib/tornado-core"]
-	path = lib/tornado-core
-	url = https://github.com/tornado-repositories/tornado-core
 [submodule "lib/circomlib"]
 	path = lib/circomlib
 	url = https://github.com/iden3/circomlib
