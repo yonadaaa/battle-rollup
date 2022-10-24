@@ -10,5 +10,5 @@
 ## Gotchas
 
 The Forge tests use SnarkJS (via Foundry [FFI](https://book.getfoundry.sh/cheatcodes/ffi)) to generate proofs for every input. This leads to two issues:
-- The SnarkJS prover contract always uses the same filename for input and proof files. As Forge tests run in parallel, if two tests use the prover, they will likely fail as they overwite each others files. You can specify a particular test with `forge test --match-test...`.
+- Currently, the SnarkJS prover contract always uses the same filename for input and proof files. As Forge tests run in parallel, if two tests use the prover, they will likely fail as they overwite each others files. You can specify a particular test with `forge test --match-test...`.
 - The standard number of 256 fuzz runs take a long time to run. I reccomend you set `FOUNDRY_FUZZ_RUNS` to a low value _eg. < 10_.
