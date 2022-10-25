@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity >=0.7.0;
-pragma abicoder v2;
+pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
 
@@ -88,7 +87,7 @@ contract PlonkProver is Script {
     {
         uint256[N] memory arrUInt;
         for (uint256 i; i < N; i++) {
-            arrUInt[i] = uint256(arr[i]);
+            arrUInt[i] = uint256(uint160(arr[i]));
         }
         return toString(arrUInt);
     }

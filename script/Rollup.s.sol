@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity >=0.7.0;
-pragma abicoder v2;
+pragma solidity ^0.8.13;
 
 import "forge-std/Script.sol";
 import "../src/Rollup.sol";
@@ -33,21 +32,6 @@ contract Deposit is Script {
 
         Rollup rollup = Rollup(0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512);
         rollup.deposit{value: 1}();
-
-        vm.stopBroadcast();
-    }
-}
-
-contract Transfer is Script {
-    function run() external {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        vm.startBroadcast(deployerPrivateKey);
-
-        Rollup rollup = Rollup(0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512);
-        rollup.transfer(
-            bytes32(uint256(0x2Cb8a64Fad15E3924d44Fe20880e7CcdbC94f54f)),
-            bytes32(uint256(10))
-        );
 
         vm.stopBroadcast();
     }

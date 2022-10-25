@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity >=0.7.0;
-pragma abicoder v2;
+pragma solidity ^0.8.13;
 
 import {IHasher} from "tornado-core/MerkleTreeWithHistory.sol";
 import "./PlonkVerifier.sol";
@@ -75,8 +74,8 @@ contract Rollup {
         require(total < 2**levels, "Rollup is full");
 
         bytes32 leaf = hashThree(
-            bytes32(uint256(address(0))),
-            bytes32(uint256(msg.sender)),
+            bytes32(0),
+            bytes32(uint256(uint160(msg.sender))),
             bytes32(msg.value)
         );
 
@@ -93,7 +92,7 @@ contract Rollup {
         );
         require(total < 2**levels, "Rollup is full");
 
-        bytes32 leaf = hashThree(bytes32(uint256(msg.sender)), to, value);
+        bytes32 leaf = hashThree(bytes32(uint256(uint160(msg.sender))), to, value);
 
         eventRoot = hashLeftRight(eventRoot, leaf);
         total++;
@@ -127,7 +126,7 @@ contract Rollup {
         bytes32[] calldata pathElements,
         bool[] calldata pathIndices
     ) external {
-        bytes32 leaf = hashLeftRight(bytes32(uint256(to)), bytes32(value));
+        bytes32 leaf = hashLeftRight(bytes32(uint256(uint160(to))), bytes32(value));
 
         require(!withdrawn[leaf], "This account has already withdrawn");
         checkMerkleTree(leaf, pathElements, pathIndices);

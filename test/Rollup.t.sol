@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity >=0.7.0;
-pragma abicoder v2;
+pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
 import "tornado-core/Mocks/MerkleTreeWithHistoryMock.sol";
@@ -22,7 +21,7 @@ function getStateTree(
         stateTree.insert(
             stateTree.hashLeftRight(
                 stateTree.hasher(),
-                bytes32(uint256(tos[i])),
+                bytes32(uint256(uint160(tos[i]))),
                 bytes32(balances[i])
             )
         );
@@ -110,7 +109,7 @@ contract RollupTest is Test {
             stateTree.insert(
                 stateTree.hashLeftRight(
                     stateTree.hasher(),
-                    bytes32(uint256(tos[i])),
+                    bytes32(uint256(uint160(tos[i]))),
                     bytes32(balances[i][N - 1])
                 )
             );
@@ -120,7 +119,7 @@ contract RollupTest is Test {
                 rollup.deposit{value: values[i]}();
             } else {
                 vm.prank(froms[i]);
-                rollup.transfer(bytes32(uint256(tos[i])), bytes32(values[i]));
+                rollup.transfer(bytes32(uint256(uint160(tos[i]))), bytes32(values[i]));
             }
         }
 
@@ -163,7 +162,7 @@ contract RollupTest is Test {
         for (uint256 i; i < N; i++) {
             vm.prank(froms[i]);
             vm.expectRevert("The rollup has entered the resolution stage");
-            rollup.transfer(bytes32(uint256(tos[i])), bytes32(values[i]));
+            rollup.transfer(bytes32(uint256(uint160(tos[i]))), bytes32(values[i]));
         }
 
         // Attempt to resolve the rollup with an invalid proof
@@ -204,7 +203,7 @@ contract RollupTest is Test {
 
             pathElements[0] = stateTree.hashLeftRight(
                 stateTree.hasher(),
-                bytes32(uint256(tos[1])),
+                bytes32(uint256(uint160(tos[1]))),
                 bytes32(balances[1][N - 1])
             );
 
@@ -218,7 +217,7 @@ contract RollupTest is Test {
                     temp.insert(
                         stateTree.hashLeftRight(
                             stateTree.hasher(),
-                            bytes32(uint256(tos[i])),
+                            bytes32(uint256(uint160(tos[i]))),
                             bytes32(balances[i][N - 1])
                         )
                     );
@@ -243,7 +242,7 @@ contract RollupTest is Test {
 
             pathElements[0] = stateTree.hashLeftRight(
                 stateTree.hasher(),
-                bytes32(uint256(tos[1])),
+                bytes32(uint256(uint160(tos[1]))),
                 bytes32(balances[1][N - 1])
             );
 
@@ -257,7 +256,7 @@ contract RollupTest is Test {
                     temp.insert(
                         stateTree.hashLeftRight(
                             stateTree.hasher(),
-                            bytes32(uint256(tos[i])),
+                            bytes32(uint256(uint160(tos[i]))),
                             bytes32(balances[i][N - 1])
                         )
                     );
@@ -273,44 +272,6 @@ contract RollupTest is Test {
                 pathElements,
                 pathIndices
             );
-        }
-    }
-
-    function testPart() public {
-        address[N] memory froms;
-        address[N] memory tos;
-        uint256[N] memory values;
-
-        froms[1] = 0x9c1FE876125D0f6794cB8630bb9e4482125350B4;
-        tos[0] = 0x9c1FE876125D0f6794cB8630bb9e4482125350B4;
-        tos[1] = 0x1558cBfd659350c54EEeAd7555c0AD8817b0eC7e;
-        values[0] = 100;
-        values[1] = 75;
-
-        uint256[N] memory balances;
-        balances[0] = 25;
-        balances[1] = 75;
-
-        stateTree = getStateTree(rollup.hasher(), tos, balances);
-
-        // Only perform two events
-        vm.deal(tos[0], type(uint32).max);
-        vm.prank(tos[0]);
-        rollup.deposit{value: values[0]}();
-
-        vm.deal(froms[1], type(uint32).max);
-        vm.prank(froms[1]);
-        rollup.transfer(bytes32(uint256(tos[1])), bytes32(values[1]));
-
-        vm.warp(block.timestamp + LIFESPAN + 10);
-
-        // Resolve the rollup
-        {
-            PlonkProver prover = new PlonkProver();
-
-            bytes memory proof = prover.fullProve(froms, tos, values);
-
-            rollup.resolve(stateTree.getLastRoot(), proof);
         }
     }
 }
