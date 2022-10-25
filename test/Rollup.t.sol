@@ -2,7 +2,6 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
-import "tornado-core/Mocks/MerkleTreeWithHistoryMock.sol";
 import "./PlonkProver.sol";
 import "../src/Rollup.sol";
 
@@ -10,27 +9,11 @@ uint32 constant LEVELS = 5;
 uint256 constant N = 2**LEVELS;
 uint256 constant LIFESPAN = 10000;
 
-function getStateTree(
-    IHasher addr,
-    address[N] memory tos,
-    uint256[N] memory balances
-) returns (MerkleTreeWithHistoryMock stateTree) {
-    stateTree = new MerkleTreeWithHistoryMock(LEVELS, addr);
+// TODO: Can we keep the MiMc implementation but use Murky for state trees?
 
-    for (uint256 i; i < N; i++) {
-        stateTree.insert(
-            stateTree.hashLeftRight(
-                stateTree.hasher(),
-                bytes32(uint256(uint160(tos[i]))),
-                bytes32(balances[i])
-            )
-        );
-    }
-}
 
 contract RollupTest is Test {
     Rollup public rollup;
-    MerkleTreeWithHistoryMock public stateTree;
 
     function setUp() public {
         bytes
@@ -42,7 +25,6 @@ contract RollupTest is Test {
         }
 
         rollup = new Rollup(block.timestamp + LIFESPAN, LEVELS, addr);
-        stateTree = new MerkleTreeWithHistoryMock(LEVELS, addr);
     }
 
     function testDeposit(address[N] calldata tos, uint32[N] calldata values)
@@ -106,14 +88,6 @@ contract RollupTest is Test {
                 }
             }
 
-            stateTree.insert(
-                stateTree.hashLeftRight(
-                    stateTree.hasher(),
-                    bytes32(uint256(uint160(tos[i]))),
-                    bytes32(balances[i][N - 1])
-                )
-            );
-
             if (froms[i] == address(0)) {
                 vm.prank(tos[i]);
                 rollup.deposit{value: values[i]}();
@@ -121,6 +95,11 @@ contract RollupTest is Test {
                 vm.prank(froms[i]);
                 rollup.transfer(bytes32(uint256(uint160(tos[i]))), bytes32(values[i]));
             }
+        }
+
+        bytes32[] memory stateHashes = new bytes32[](N);
+        for (uint256 i; i < N; i++) {
+            stateHashes[i] = rollup.hashLeftRight(bytes32(uint256(uint160(tos[i]))), bytes32(balances[i][N-1]));
         }
 
         // Attempt to deposit too many times
@@ -143,7 +122,7 @@ contract RollupTest is Test {
 
         // Attempt to resolve the rollup prematurely
         {
-            bytes32 root = stateTree.getLastRoot();
+            bytes32 root = getRoot(stateHashes);
 
             vm.expectRevert("The rollup has not entered the resolution stage");
             rollup.resolve(root, "");
@@ -167,7 +146,7 @@ contract RollupTest is Test {
 
         // Attempt to resolve the rollup with an invalid proof
         {
-            bytes32 root = stateTree.getLastRoot();
+            bytes32 root = getRoot(stateHashes);
 
             vm.expectRevert("Proof verification failed");
             rollup.resolve(root, "");
@@ -179,7 +158,7 @@ contract RollupTest is Test {
 
             bytes memory proof = prover.fullProve(froms, tos, values);
 
-            rollup.resolve(stateTree.getLastRoot(), proof);
+            rollup.resolve(getRoot(stateHashes), proof);
         }
 
         // Attempt to withdraw from the rollup without a valid merkle proof
@@ -201,30 +180,7 @@ contract RollupTest is Test {
             bytes32[] memory pathElements = new bytes32[](LEVELS);
             bool[] memory pathIndices = new bool[](LEVELS);
 
-            pathElements[0] = stateTree.hashLeftRight(
-                stateTree.hasher(),
-                bytes32(uint256(uint160(tos[1]))),
-                bytes32(balances[1][N - 1])
-            );
-
-            for (uint32 level = 1; level < LEVELS; level++) {
-                MerkleTreeWithHistoryMock temp = new MerkleTreeWithHistoryMock(
-                    level,
-                    stateTree.hasher()
-                );
-
-                for (uint256 i = 2**level; i < 2**(level + 1); i++) {
-                    temp.insert(
-                        stateTree.hashLeftRight(
-                            stateTree.hasher(),
-                            bytes32(uint256(uint160(tos[i]))),
-                            bytes32(balances[i][N - 1])
-                        )
-                    );
-                }
-
-                pathElements[level] = temp.getLastRoot();
-            }
+            pathElements = getProof(stateHashes, 0);
 
             vm.expectCall(tos[0], "");
             rollup.withdraw(
@@ -240,30 +196,7 @@ contract RollupTest is Test {
             bytes32[] memory pathElements = new bytes32[](LEVELS);
             bool[] memory pathIndices = new bool[](LEVELS);
 
-            pathElements[0] = stateTree.hashLeftRight(
-                stateTree.hasher(),
-                bytes32(uint256(uint160(tos[1]))),
-                bytes32(balances[1][N - 1])
-            );
-
-            for (uint32 level = 1; level < LEVELS; level++) {
-                MerkleTreeWithHistoryMock temp = new MerkleTreeWithHistoryMock(
-                    level,
-                    stateTree.hasher()
-                );
-
-                for (uint256 i = 2**level; i < 2**(level + 1); i++) {
-                    temp.insert(
-                        stateTree.hashLeftRight(
-                            stateTree.hasher(),
-                            bytes32(uint256(uint160(tos[i]))),
-                            bytes32(balances[i][N - 1])
-                        )
-                    );
-                }
-
-                pathElements[level] = temp.getLastRoot();
-            }
+            pathElements = getProof(stateHashes, 0);
 
             vm.expectRevert("This account has already withdrawn");
             rollup.withdraw(
@@ -272,6 +205,110 @@ contract RollupTest is Test {
                 pathElements,
                 pathIndices
             );
+        }
+    }
+
+    // from https://github.com/dmfxyz/murky/blob/main/src/common/MurkyBase.sol
+    function hashLevel(bytes32[] memory data) private view returns (bytes32[] memory) {
+        bytes32[] memory result;
+
+        unchecked {
+            uint256 length = data.length;
+            if (length & 0x1 == 1){
+                result = new bytes32[](length / 2 + 1);
+                result[result.length - 1] = rollup.hashLeftRight(data[length - 1], bytes32(0));
+            } else {
+                result = new bytes32[](length / 2);
+        }
+            uint256 pos = 0;
+            for (uint256 i = 0; i < length-1; i+=2){
+                result[pos] = rollup.hashLeftRight(data[i], data[i+1]);
+                ++pos;
+            }
+        }
+        return result;
+    }
+
+    function getRoot(bytes32[] memory data) public view returns (bytes32) {
+        require(data.length > 1, "won't generate root for single leaf");
+        while(data.length > 1) {
+            data = hashLevel(data);
+        }
+        return data[0];
+    }
+
+    function getProof(bytes32[] memory data, uint256 node) public view returns (bytes32[] memory) {
+        require(data.length > 1, "won't generate proof for single leaf");
+        // The size of the proof is equal to the ceiling of log2(numLeaves) 
+        bytes32[] memory result = new bytes32[](log2ceilBitMagic(data.length));
+        uint256 pos = 0;
+
+        // Two overflow risks: node, pos
+        // node: max array size is 2**256-1. Largest index in the array will be 1 less than that. Also,
+           // for dynamic arrays, size is limited to 2**64-1
+        // pos: pos is bounded by log2(data.length), which should be less than type(uint256).max
+        while(data.length > 1) {
+            unchecked {
+                if(node & 0x1 == 1) {
+                    result[pos] = data[node - 1];
+                } 
+                else if (node + 1 == data.length) {
+                    result[pos] = bytes32(0);  
+                } 
+                else {
+                    result[pos] = data[node + 1];
+                }
+                ++pos;
+                node /= 2;
+            }
+            data = hashLevel(data);
+        }
+        return result;
+    }
+
+     function log2ceilBitMagic(uint256 x) public pure returns (uint256){
+        if (x <= 1) {
+            return 0;
+        }
+        uint256 msb = 0;
+        uint256 _x = x;
+        if (x >= 2**128) {
+            x >>= 128;
+            msb += 128;
+        }
+        if (x >= 2**64) {
+            x >>= 64;
+            msb += 64;
+        }
+        if (x >= 2**32) {
+            x >>= 32;
+            msb += 32;
+        }
+        if (x >= 2**16) {
+            x >>= 16;
+            msb += 16;
+        }
+        if (x >= 2**8) {
+            x >>= 8;
+            msb += 8;
+        }
+        if (x >= 2**4) {
+            x >>= 4;
+            msb += 4;
+        }
+        if (x >= 2**2) {
+            x >>= 2;
+            msb += 2;
+        }
+        if (x >= 2**1) {
+            msb += 1;
+        }
+
+        uint256 lsb = (~_x + 1) & _x;
+        if ((lsb == _x) && (msb > 0)) {
+            return msb;
+        } else {
+            return msb + 1;
         }
     }
 }

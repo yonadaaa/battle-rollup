@@ -49,44 +49,44 @@ contract Advance is Script {
 }
 
 // This script is currently hardcoded. Replace the events with the actual events from your rollup.
-contract Resolve is Script {
-    function run() external {
-        address[N] memory froms;
-        froms[1] = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
+// contract Resolve is Script {
+//     function run() external {
+//         address[N] memory froms;
+//         froms[1] = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
 
-        address[N] memory tos;
-        tos[0] = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
-        tos[1] = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8;
-        tos[2] = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
-        tos[3] = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
+//         address[N] memory tos;
+//         tos[0] = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
+//         tos[1] = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8;
+//         tos[2] = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
+//         tos[3] = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
 
-        uint256[N] memory values;
-        values[0] = 100 ether;
-        values[1] = 25 ether;
-        values[2] = 100 ether;
-        values[3] = 50000 ether;
+//         uint256[N] memory values;
+//         values[0] = 100 ether;
+//         values[1] = 25 ether;
+//         values[2] = 100 ether;
+//         values[3] = 50000 ether;
 
-        // TODO: use script for this
-        uint256[N] memory balances;
-        balances[0] = values[0] - values[1] + values[2] + values[3];
-        balances[1] = values[1];
+//         // TODO: use script for this
+//         uint256[N] memory balances;
+//         balances[0] = values[0] - values[1] + values[2] + values[3];
+//         balances[1] = values[1];
 
-        PlonkProver prover = new PlonkProver();
-        bytes memory proof = prover.fullProve(froms, tos, values);
+//         PlonkProver prover = new PlonkProver();
+//         bytes memory proof = prover.fullProve(froms, tos, values);
 
-        Rollup rollup = Rollup(0x721a1ecB9105f2335a8EA7505D343a5a09803A06);
+//         Rollup rollup = Rollup(0x721a1ecB9105f2335a8EA7505D343a5a09803A06);
 
-        MerkleTreeWithHistoryMock stateTree = getStateTree(
-            rollup.hasher(),
-            tos,
-            balances
-        );
-        bytes32 state = stateTree.getLastRoot();
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        vm.startBroadcast(deployerPrivateKey);
+//         MerkleTreeWithHistoryMock stateTree = getStateTree(
+//             rollup.hasher(),
+//             tos,
+//             balances
+//         );
+//         bytes32 state = stateTree.getLastRoot();
+//         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+//         vm.startBroadcast(deployerPrivateKey);
 
-        rollup.resolve(state, proof);
+//         rollup.resolve(state, proof);
 
-        vm.stopBroadcast();
-    }
-}
+//         vm.stopBroadcast();
+//     }
+// }
