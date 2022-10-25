@@ -9,9 +9,6 @@ uint32 constant LEVELS = 5;
 uint256 constant N = 2**LEVELS;
 uint256 constant LIFESPAN = 10000;
 
-// TODO: Can we keep the MiMc implementation but use Murky for state trees?
-
-
 contract RollupTest is Test {
     Rollup public rollup;
 

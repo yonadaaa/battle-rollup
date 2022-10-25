@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import {IHasher} from "tornado-core/MerkleTreeWithHistory.sol";
 import "./PlonkVerifier.sol";
+
+interface IHasher {
+  function MiMCSponge(uint256 in_xL, uint256 in_xR) external pure returns (uint256 xL, uint256 xR);
+}
 
 contract Rollup {
     uint256 public constant FIELD_SIZE =
@@ -30,8 +33,9 @@ contract Rollup {
     ) {
         hasher = _hasher;
         levels = _levels;
-        verifier = new PlonkVerifier();
         expiry = _expiry;
+
+        verifier = new PlonkVerifier();
     }
 
     /**
