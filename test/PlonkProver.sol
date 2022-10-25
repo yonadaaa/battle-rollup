@@ -19,8 +19,7 @@ contract PlonkProver is Script {
         // TODO: can this just be written as an array of signals?
         vm.writeFile(
             fileName,
-            string(
-                abi.encodePacked(
+            string.concat(
                     '{"froms":',
                     toString(eventFroms),
                     ',"tos":',
@@ -28,7 +27,6 @@ contract PlonkProver is Script {
                     ',"values":',
                     toString(eventValues),
                     "}"
-                )
             )
         );
 
@@ -68,17 +66,15 @@ contract PlonkProver is Script {
     {
         out = "[";
         for (uint256 i; i < N; i++) {
-            out = string(
-                abi.encodePacked(
+            out = string.concat(
                     out,
                     '"',
                     vm.toString(arr[i]),
                     '"',
                     i == (N - 1) ? "" : ","
-                )
             );
         }
-        out = string(abi.encodePacked(out, "]"));
+        out = string.concat(out, "]");
     }
 
     function toString(address[N] memory arr)
