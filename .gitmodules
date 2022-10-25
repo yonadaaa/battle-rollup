@@ -4,6 +4,3 @@
 [submodule "lib/circomlib"]
 	path = lib/circomlib
 	url = https://github.com/iden3/circomlib
-[submodule "lib/tornado-core"]
-	path = lib/tornado-core
-	url = https://github.com/tornadocash-community/tornado-core.git
