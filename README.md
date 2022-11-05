@@ -1,4 +1,10 @@
-# battle-rollup
+# Battle rollup
+An fully decentralised rollup for payments (gaming proofs coming soon!).
+
+## Overview
+Users can deposit ETH into the rollup contract, and transfer ETH to others. Crucially, balances are not tracked directly in the contract. 
+
+Instead, after a fixed timestamp, the rollup "freezes". Anyone can then settle the rollup by submitting a merkle root of each users final balance, along with a validity proof that the merkle root is valid given past events. Users can then withdraw their balance from the rollup contract.
 
 ## Usage
 1. Install [Foundry](https://book.getfoundry.sh/getting-started/installation)
